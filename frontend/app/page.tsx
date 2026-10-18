@@ -1,161 +1,90 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { mockProducts, Product } from "@/data";
+import { useCartStore } from "@/store/useCartStore";
+import { getProducts } from "@/services/product.service";
+import { Product } from "@/types";
 
-export default function Home() {
-  const [cart, setCart] = useState<{ [id: number]: number }>({});
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+export default function HomePage() {
+  const [mounted, setMounted] = useState(false);
+  const products = getProducts();
 
-  const addToCart = (productId: number) => {
-    setCart((prev) => ({
-      ...prev,
-      [productId]: (prev[productId] || 0) + 1,
-    }));
+  const totalItems = useCartStore((state) => state.getTotalItems());
+  const addItem = useCartStore((state) => state.addItem);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const handleQuickAdd = (e: React.MouseEvent, product: Product) => {
+    e.preventDefault();
+    e.stopPropagation(); // Chặn sự kiện click nhảy lên thẻ Link cha
+    
+    const defaultSize = product.sizes?.[0] || { name: "Tiêu chuẩn", price: 0 };
+    
+    addItem({
+      productId: product.id,
+      name: product.name,
+      basePrice: product.price,
+      size: defaultSize,
+      toppings: [],
+      qty: 1,
+      lineTotal: product.price + defaultSize.price,
+    });
   };
 
-  const totalItems = Object.values(cart).reduce((sum, count) => sum + count, 0);
-
-  const totalPrice = Object.entries(cart).reduce((sum, [id, count]) => {
-    const product = mockProducts.find((p) => p.id === Number(id));
-    return sum + (product ? product.price * count : 0);
-  }, 0);
-
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col">
-      {/* 1. Header */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl font-black tracking-tight text-amber-900">
-              BrewLite
-            </span>
-            <span className="text-xs bg-amber-100 text-amber-800 font-medium px-2 py-0.5 rounded-full">
-              Coffee
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            aria-label="Toggle menu"
-            className="p-2 rounded-xl text-gray-700 hover:bg-gray-100 active:bg-gray-200 transition-colors focus:outline-none"
-          >
-            {/* Hamburger Icon */}
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              {isMenuOpen ? (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              ) : (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              )}
-            </svg>
-          </button>
+    <div className="min-h-screen bg-neutral-900 text-neutral-100 pb-28">
+      <header className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-neutral-900/80 backdrop-blur border-b border-neutral-800">
+        <div className="flex items-center gap-2">
+          <span className="text-xl font-bold tracking-tight text-white">BrewLite</span>
+          <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-medium">Coffee</span>
         </div>
-
-        {/* Mobile Dropdown Menu */}
-        {isMenuOpen && (
-          <nav className="border-t border-gray-100 bg-white px-4 py-3 space-y-2 md:hidden">
-            <a
-              href="#menu"
-              className="block px-3 py-2 rounded-lg text-sm font-medium text-gray-800 hover:bg-gray-50"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Thực đơn
-            </a>
-            <a
-              href="#about"
-              className="block px-3 py-2 rounded-lg text-sm font-medium text-gray-800 hover:bg-gray-50"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Về BrewLite
-            </a>
-          </nav>
-        )}
+        <button className="text-neutral-400 hover:text-white transition">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-6 pb-28">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Thực đơn hôm nay</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Chọn món yêu thích và đặt hàng nhanh chóng cùng BrewLite
-          </p>
-        </div>
+      <main className="max-w-4xl mx-auto px-6 pt-6">
+        <h1 className="text-2xl font-bold text-white">Thực đơn hôm nay</h1>
+        <p className="text-sm text-neutral-400 mt-1">Chọn món yêu thích và đặt hàng nhanh chóng cùng BrewLite</p>
 
-        {/* 2. Product Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          {mockProducts.map((product: Product) => (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+          {products.map((product) => (
             <div
               key={product.id}
-              className="group bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col"
+              className="group bg-neutral-800/60 rounded-2xl overflow-hidden border border-neutral-800/80 hover:border-neutral-700 transition flex flex-col justify-between"
             >
-              {/* Product Image & Info Link */}
-              <Link
-                href={`/product/${product.id}`}
-                className="block cursor-pointer flex-1"
-              >
-                <div className="relative aspect-square w-full bg-gray-100 overflow-hidden">
+              {/* Vùng click vào xem chi tiết món */}
+              <Link href={`/product/${product.id}`} className="block">
+                <div className="aspect-square w-full overflow-hidden bg-neutral-800 relative">
                   <img
                     src={product.imageUrl}
                     alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    loading="lazy"
+                    className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                   />
                 </div>
-
                 <div className="p-3.5 pb-0">
-                  <h2 className="font-semibold text-gray-900 text-sm sm:text-base line-clamp-1 group-hover:text-emerald-700 transition-colors">
+                  <h3 className="font-semibold text-neutral-200 text-sm group-hover:text-amber-400 transition">
                     {product.name}
-                  </h2>
-                  <p className="text-amber-800 font-bold text-sm sm:text-base mt-0.5">
-                    {product.price.toLocaleString("vi-VN")} ₫
+                  </h3>
+                  <p className="text-amber-500 font-medium text-xs mt-1">
+                    {product.price.toLocaleString("vi-VN")} đ
                   </p>
                 </div>
               </Link>
 
-              {/* Product Action */}
-              <div className="p-3.5 pt-2">
+              {/* Vùng nút Thêm nhanh độc lập ngoài Link */}
+              <div className="p-3.5 pt-3">
                 <button
                   type="button"
-                  onClick={() => addToCart(product.id)}
-                  className="w-full py-2 px-3 bg-amber-50 hover:bg-amber-600 text-amber-800 hover:text-white text-xs sm:text-sm font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+                  onClick={(e) => handleQuickAdd(e, product)}
+                  className="w-full py-2 text-xs font-medium text-amber-400 bg-amber-400/10 hover:bg-amber-400 hover:text-neutral-900 rounded-lg transition active:scale-95"
                 >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                  <span>Thêm</span>
-                  {cart[product.id] ? (
-                    <span className="ml-1 bg-amber-600 group-hover:bg-amber-700 text-white rounded-full px-1.5 text-xs">
-                      {cart[product.id]}
-                    </span>
-                  ) : null}
+                  + Thêm
                 </button>
               </div>
             </div>
@@ -163,54 +92,20 @@ export default function Home() {
         </div>
       </main>
 
-      {/* 3. Bottom Sticky Bar: 'Xem giỏ hàng (0)' */}
-      <aside className="fixed bottom-4 inset-x-4 max-w-lg mx-auto z-50">
-        <button
-          type="button"
-          className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-semibold py-3.5 px-6 rounded-2xl shadow-xl shadow-emerald-600/30 flex items-center justify-between transition-all"
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-neutral-950 via-neutral-950/80 to-transparent flex justify-center z-20">
+        <Link
+          href="/cart"
+          className="w-full max-w-md bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3.5 px-6 rounded-2xl shadow-lg shadow-emerald-900/30 flex items-center justify-between transition active:scale-98"
         >
-          <div className="flex items-center gap-2.5">
-            {/* Shopping Bag Icon */}
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-              />
-            </svg>
-            <span className="text-base">
-              Xem giỏ hàng ({totalItems})
-            </span>
-          </div>
-
           <div className="flex items-center gap-2">
-            {totalPrice > 0 && (
-              <span className="font-bold text-sm bg-emerald-700/60 px-2.5 py-1 rounded-lg">
-                {totalPrice.toLocaleString("vi-VN")} ₫
-              </span>
-            )}
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2.5}
-                d="M9 5l7 7-7 7"
-              />
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
             </svg>
+            <span>Xem giỏ hàng ({mounted ? totalItems : 0})</span>
           </div>
-        </button>
-      </aside>
+          <span>&rarr;</span>
+        </Link>
+      </div>
     </div>
   );
 }
