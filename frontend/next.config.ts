@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: [
     "192.168.1.18",
     "192.168.1.18:3000",
+    "192.168.85.98",
+    "192.168.85.98:3000",
     "localhost:3000",
   ],
 

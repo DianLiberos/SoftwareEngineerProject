@@ -44,3 +44,16 @@ export interface Order {
   createdAt: string;
   items: CartItem[];
 }
+
+// 5. Định nghĩa cho User và Auth Response
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  loyaltyPoints?: number;
+}
+
+export interface AuthResponse {
+  accessToken: string;
+  user: User;
+}

@@ -3,9 +3,23 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCartStore } from "@/store/useCartStore";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export default function CartPage() {
   const [mounted, setMounted] = useState(false);
+
+  const router = useRouter();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const handleProceedToCheckout = () => {
+    if (!isAuthenticated) {
+      // Chưa đăng nhập: đẩy sang login kèm param nhớ đường về
+      router.push("/login?redirect=/checkout");
+    } else {
+      // Đã đăng nhập: đi thẳng tới thanh toán
+      router.push("/checkout");
+    }
+  };
 
   // Lấy dữ liệu và các hàm thao tác từ Zustand Store
   const items = useCartStore((state) => state.items);
@@ -164,13 +178,13 @@ export default function CartPage() {
               </p>
             </div>
 
-            <Link
-              href="/checkout"
+            <button
+              onClick={handleProceedToCheckout}
               className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-6 rounded-xl transition shadow-lg shadow-emerald-900/40 active:scale-95 flex items-center gap-2"
             >
               <span>Thanh toán</span>
               <span>&rarr;</span>
-            </Link>
+            </button> 
           </div>
         </div>
       )}
