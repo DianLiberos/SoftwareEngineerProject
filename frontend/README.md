@@ -1,5 +1,12 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Backend API
+
+Copy `.env.example` to `.env.local` to set `NEXT_PUBLIC_API_URL` (defaults to
+`http://localhost:3001`), and start the NestJS API in `../backend`. Checkout
+creates a pending order and then submits payment; profile order history is
+loaded from the API for the seeded `user-demo-01` demo account.
+
 ## Getting Started
 
 First, run the development server:

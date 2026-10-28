@@ -25,10 +25,16 @@ export default function ProfilePage() {
       return;
     }
 
-    getMyOrdersApi().then((data) => {
-      setOrders(data);
-      setLoadingOrders(false);
-    });
+    getMyOrdersApi("user-demo-01")
+      .then(setOrders)
+      .catch((error: unknown) => {
+        alert(
+          error instanceof Error
+            ? error.message
+            : "Không thể tải lịch sử đặt hàng.",
+        );
+      })
+      .finally(() => setLoadingOrders(false));
   }, [isAuthenticated, router]);
 
   if (!mounted || !isAuthenticated || !user) return null;

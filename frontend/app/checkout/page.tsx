@@ -59,16 +59,14 @@ export default function CheckoutPage() {
       const order = await createOrderApi({
         userId: "user-demo-01",
         items,
-        total: totalPrice,
       });
 
-      // 2. Tạo Idempotency-Key chuẩn UUID để tránh trừ tiền 2 lần
-      const idempotencyKey = `pay-${order.id}-${Date.now()}`;
+      // Reusing this key makes a payment retry return the original result.
+      const idempotencyKey = `pay-${order.id}`;
 
-      // 3. Tiến hành thanh toán qua Mock Service
+      // 3. Submit payment to the backend.
       const paymentResult = await processPaymentApi({
         orderId: order.id,
-        amount: totalPrice,
         method,
         idempotencyKey,
       });
@@ -82,7 +80,11 @@ export default function CheckoutPage() {
         status: paymentResult.status,
       });
     } catch (error) {
-      alert("Có lỗi xảy ra trong quá trình xử lý đơn hàng. Vui lòng thử lại!");
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Có lỗi xảy ra trong quá trình xử lý đơn hàng. Vui lòng thử lại!",
+      );
     } finally {
       setIsProcessing(false);
     }
