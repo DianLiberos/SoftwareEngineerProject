@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { DiscountType, OrderStatus, Prisma } from "@prisma/client";
+import { DiscountType, OrderStatus, Prisma } from "../generated/prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateOrderDto } from "./order.dto";
 
@@ -228,6 +228,21 @@ export class OrdersService {
       throw new NotFoundException("Order not found");
     }
     return order;
+  }
+
+  async findByUser(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+    return this.prisma.order.findMany({
+      where: { userId },
+      include: { items: true, payment: true },
+      orderBy: { createdAt: "desc" },
+    });
   }
 
   async transition(id: string, nextStatus: OrderStatus) {

@@ -5,7 +5,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/useAuthStore";
-import { getMyOrdersApi } from "@/services/order.service";
+import {
+  DEMO_BACKEND_USER_ID,
+  getLoyaltyPointsApi,
+  getMyOrdersApi,
+} from "@/services/order.service";
 import { Order } from "@/types";
 
 export default function ProfilePage() {
@@ -13,6 +17,7 @@ export default function ProfilePage() {
   const [mounted, setMounted] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+  const [loyaltyPoints, setLoyaltyPoints] = useState<number | null>(null);
 
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -25,7 +30,7 @@ export default function ProfilePage() {
       return;
     }
 
-    getMyOrdersApi("user-demo-01")
+    getMyOrdersApi(DEMO_BACKEND_USER_ID)
       .then(setOrders)
       .catch((error: unknown) => {
         alert(
@@ -35,6 +40,16 @@ export default function ProfilePage() {
         );
       })
       .finally(() => setLoadingOrders(false));
+
+    getLoyaltyPointsApi(DEMO_BACKEND_USER_ID)
+      .then(setLoyaltyPoints)
+      .catch((error: unknown) => {
+        alert(
+          error instanceof Error
+            ? error.message
+            : "Không thể tải điểm thưởng.",
+        );
+      });
   }, [isAuthenticated, router]);
 
   if (!mounted || !isAuthenticated || !user) return null;
@@ -79,7 +94,9 @@ export default function ProfilePage() {
               <h2 className="text-xl font-bold text-white">{user.name}</h2>
               <p className="text-xs text-neutral-400 mt-0.5">{user.email}</p>
               <div className="inline-flex items-center gap-1.5 mt-2 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-md text-xs font-semibold text-amber-400">
-                <span>⭐ {user.loyaltyPoints || 0} điểm thưởng</span>
+                <span>
+                  ⭐ {loyaltyPoints ?? user.loyaltyPoints ?? 0} điểm thưởng
+                </span>
               </div>
             </div>
           </div>

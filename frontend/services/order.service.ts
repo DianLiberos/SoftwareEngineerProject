@@ -12,6 +12,8 @@ export interface PaymentPayload {
   idempotencyKey: string;
 }
 
+export const DEMO_BACKEND_USER_ID = "user-demo-01";
+
 interface ApiOrderItem {
   productId: string;
   name: string;
@@ -134,4 +136,13 @@ export const getMyOrdersApi = async (userId: string): Promise<Order[]> => {
     `/orders/user/${encodeURIComponent(userId)}`,
   );
   return orders.map(mapOrder);
+};
+
+export const getLoyaltyPointsApi = async (
+  userId: string,
+): Promise<number> => {
+  const loyalty = await request<{ id: string; loyaltyPoints: number }>(
+    `/users/${encodeURIComponent(userId)}/loyalty`,
+  );
+  return loyalty.loyaltyPoints;
 };

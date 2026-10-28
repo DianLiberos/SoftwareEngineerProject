@@ -10,6 +10,11 @@ npm run prisma:migrate -- --name init
 npm run prisma:seed
 npm run start:dev
 
+With Prisma 7, the PostgreSQL connection URL is configured in
+`prisma.config.ts`, not `schema.prisma`. The API uses Prisma's PostgreSQL
+driver adapter, and the Prisma Client is generated automatically by the build
+and start scripts.
+
 The seed creates demo user `user-demo-01`, four menu products, and the `BREW10` coupon. Database stock and prices are authoritative; order creation accepts product IDs and quantities,
 not client-submitted prices.
 

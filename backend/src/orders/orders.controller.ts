@@ -11,6 +11,11 @@ export class OrdersController {
     return this.ordersService.create(dto);
   }
 
+  @Get("user/:userId")
+  findByUser(@Param("userId") userId: string) {
+    return this.ordersService.findByUser(userId);
+  }
+
   @Get(":id")
   findOne(@Param("id") id: string) {
     return this.ordersService.findOne(id);

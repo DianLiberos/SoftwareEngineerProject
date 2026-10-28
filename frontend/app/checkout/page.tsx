@@ -5,9 +5,46 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCartStore } from "@/store/useCartStore";
-import { createOrderApi, processPaymentApi } from "@/services/order.service";
+import {
+  createOrderApi,
+  DEMO_BACKEND_USER_ID,
+  processPaymentApi,
+} from "@/services/order.service";
 
 type PaymentMethod = "WALLET" | "BANK_CARD";
+type PendingPayment = {
+  orderId: string;
+  cartSignature: string;
+};
+
+const PENDING_PAYMENT_KEY = `brewlite_pending_payment_${DEMO_BACKEND_USER_ID}`;
+
+function getPendingPayment(): PendingPayment | null {
+  const savedPayment = localStorage.getItem(PENDING_PAYMENT_KEY);
+  if (!savedPayment) return null;
+
+  try {
+    const parsed: unknown = JSON.parse(savedPayment);
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "orderId" in parsed &&
+      typeof parsed.orderId === "string" &&
+      "cartSignature" in parsed &&
+      typeof parsed.cartSignature === "string"
+    ) {
+      return {
+        orderId: parsed.orderId,
+        cartSignature: parsed.cartSignature,
+      };
+    }
+  } catch {
+    // Replace corrupt local state with a fresh order on the next attempt.
+  }
+
+  localStorage.removeItem(PENDING_PAYMENT_KEY);
+  return null;
+}
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -55,24 +92,35 @@ export default function CheckoutPage() {
     try {
       setIsProcessing(true);
 
-      // 1. Tạo đơn hàng (Trạng thái PENDING)
-      const order = await createOrderApi({
-        userId: "user-demo-01",
-        items,
-      });
+      const cartSignature = JSON.stringify(items);
+      let pendingPayment = getPendingPayment();
 
-      // Reusing this key makes a payment retry return the original result.
-      const idempotencyKey = `pay-${order.id}`;
+      if (pendingPayment?.cartSignature !== cartSignature) {
+        pendingPayment = null;
+      }
 
-      // 3. Submit payment to the backend.
+      if (!pendingPayment) {
+        const order = await createOrderApi({
+          userId: DEMO_BACKEND_USER_ID,
+          items,
+        });
+        pendingPayment = { orderId: order.id, cartSignature };
+        localStorage.setItem(
+          PENDING_PAYMENT_KEY,
+          JSON.stringify(pendingPayment),
+        );
+      }
+
+      // Reuse the order and key if the request is retried or its response is lost.
       const paymentResult = await processPaymentApi({
-        orderId: order.id,
+        orderId: pendingPayment.orderId,
         method,
-        idempotencyKey,
+        idempotencyKey: `pay-${pendingPayment.orderId}`,
       });
 
       // 4. Xóa sạch giỏ hàng sau khi thanh toán thành công
       clearCart();
+      localStorage.removeItem(PENDING_PAYMENT_KEY);
 
       // 5. Lưu đơn thành công để chuyển sang Wireframe Screen (5)
       setCompletedOrder({
