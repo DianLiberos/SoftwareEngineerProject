@@ -15,6 +15,7 @@ frontend/next-env.d.ts
 # 3. Backend (NestJS)
 backend/dist/
 backend/out/
+backend/src/generated/prisma/
 
 # 4. Environment Variables
 # CHÚ Ý: Đừng bao giờ push file chứa mật khẩu DB lên Git
