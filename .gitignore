@@ -38,4 +38,9 @@ yarn-debug.log*
 yarn-error.log*
 coverage/
 
-cautrucBrewLite.txt
+cautrucBrewLite.txtapps/web/.next/
+apps/web/out/
+apps/web/build/
+apps/api/dist/
+apps/api/src/generated/
+*.tsbuildinfo
