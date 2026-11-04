@@ -1,23 +1,16 @@
-// frontend/app/profile/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/useAuthStore";
-import {
-  DEMO_BACKEND_USER_ID,
-  getLoyaltyPointsApi,
-  getMyOrdersApi,
-} from "@/services/order.service";
-import { Order } from "@/types";
+import { getMyOrdersApi } from "@/services/order.service";
 
 export default function ProfilePage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
-  const [loyaltyPoints, setLoyaltyPoints] = useState<number | null>(null);
 
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -30,26 +23,11 @@ export default function ProfilePage() {
       return;
     }
 
-    getMyOrdersApi(DEMO_BACKEND_USER_ID)
-      .then(setOrders)
-      .catch((error: unknown) => {
-        alert(
-          error instanceof Error
-            ? error.message
-            : "Không thể tải lịch sử đặt hàng.",
-        );
-      })
-      .finally(() => setLoadingOrders(false));
-
-    getLoyaltyPointsApi(DEMO_BACKEND_USER_ID)
-      .then(setLoyaltyPoints)
-      .catch((error: unknown) => {
-        alert(
-          error instanceof Error
-            ? error.message
-            : "Không thể tải điểm thưởng.",
-        );
-      });
+    // Lấy đơn của user-demo-01 trong PostgreSQL
+    getMyOrdersApi("user-demo-01").then((data) => {
+      setOrders(Array.isArray(data) ? data : []);
+      setLoadingOrders(false);
+    });
   }, [isAuthenticated, router]);
 
   if (!mounted || !isAuthenticated || !user) return null;
@@ -60,13 +38,13 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-900 text-neutral-100 pb-20">
+    <div className="min-h-screen bg-neutral-950 text-neutral-100 pb-20">
       {/* Header */}
-      <header className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-neutral-900/80 backdrop-blur border-b border-neutral-800">
+      <header className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-neutral-950/80 backdrop-blur border-b border-neutral-800">
         <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="p-1.5 text-neutral-400 hover:text-white bg-neutral-800 rounded-lg transition active:scale-95"
+            className="p-1.5 text-neutral-400 hover:text-white bg-neutral-900 rounded-lg transition active:scale-95"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -84,8 +62,8 @@ export default function ProfilePage() {
       </header>
 
       <main className="max-w-2xl mx-auto px-6 pt-6 space-y-6">
-        {/* Card Thông tin User */}
-        <section className="bg-neutral-800/60 border border-neutral-800 rounded-3xl p-6 relative overflow-hidden">
+        {/* User Card */}
+        <section className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 relative overflow-hidden">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-400 flex items-center justify-center text-2xl font-black">
               {user.name.charAt(0).toUpperCase()}
@@ -94,15 +72,13 @@ export default function ProfilePage() {
               <h2 className="text-xl font-bold text-white">{user.name}</h2>
               <p className="text-xs text-neutral-400 mt-0.5">{user.email}</p>
               <div className="inline-flex items-center gap-1.5 mt-2 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-md text-xs font-semibold text-amber-400">
-                <span>
-                  ⭐ {loyaltyPoints ?? user.loyaltyPoints ?? 0} điểm thưởng
-                </span>
+                <span>⭐ {user.loyaltyPoints || 50} điểm thưởng</span>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Lịch sử giao dịch (Task 9: GET /orders/me) */}
+        {/* Lịch sử đơn hàng từ PostgreSQL */}
         <section>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-bold text-white">Lịch sử đặt hàng</h3>
@@ -110,54 +86,72 @@ export default function ProfilePage() {
           </div>
 
           {loadingOrders ? (
-            <div className="text-center py-10 text-xs text-neutral-500">Đang tải lịch sử...</div>
+            <div className="text-center py-10 text-xs text-neutral-500">Đang tải lịch sử từ Database...</div>
           ) : orders.length === 0 ? (
-            <div className="bg-neutral-800/30 border border-neutral-800 rounded-2xl p-8 text-center text-neutral-400">
-              <p className="text-sm">Bạn chưa có đơn đặt hàng nào.</p>
+            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-8 text-center text-neutral-400">
+              <p className="text-sm">Chưa có đơn hàng nào trong hệ thống.</p>
               <Link href="/" className="inline-block mt-3 text-xs text-amber-400 font-semibold hover:underline">
                 Đặt món ngay &rarr;
               </Link>
             </div>
           ) : (
             <div className="space-y-3.5">
-              {orders.map((ord) => (
+              {orders.map((ord: any) => (
                 <div
                   key={ord.id}
-                  className="bg-neutral-800/50 border border-neutral-800 rounded-2xl p-4.5 space-y-3"
+                  className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4.5 space-y-3"
                 >
-                  <div className="flex items-center justify-between border-b border-neutral-800/80 pb-2.5">
+                  <div className="flex items-center justify-between border-b border-neutral-800 pb-2.5">
                     <div>
                       <span className="font-mono font-bold text-sm text-white">#{ord.id}</span>
                       <span className="text-xs text-neutral-500 ml-2">
-                        {new Date(ord.createdAt).toLocaleDateString("vi-VN", {
+                        {ord.createdAt ? new Date(ord.createdAt).toLocaleDateString("vi-VN", {
                           hour: "2-digit",
                           minute: "2-digit",
                           day: "2-digit",
                           month: "2-digit",
-                        })}
+                        }) : ""}
                       </span>
                     </div>
-                    <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold px-2 py-0.5 rounded">
+                    <span
+                      className={`text-xs font-bold px-2 py-0.5 rounded border ${
+                        ord.status === "PAID"
+                          ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                          : ord.status === "PENDING"
+                          ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                          : "bg-neutral-800 border-neutral-700 text-neutral-300"
+                      }`}
+                    >
                       {ord.status}
                     </span>
                   </div>
 
-                  {/* Chi tiết từng món trong đơn */}
-                  <div className="space-y-1 text-xs text-neutral-300">
-                    {ord.items.map((it, idx) => (
-                      <div key={idx} className="flex justify-between">
-                        <span>
-                          {it.name} ({it.size.name}) x{it.qty}
-                        </span>
-                        <span className="text-neutral-400">{it.lineTotal.toLocaleString("vi-VN")} đ</span>
-                      </div>
-                    ))}
+                  {/* Render danh sách món */}
+                  <div className="space-y-1.5 text-xs text-neutral-300">
+                    {ord.items && ord.items.length > 0 ? (
+                      ord.items.map((it: any, idx: number) => {
+                        const name = it.product?.name || it.name || `Sản phẩm #${it.productId}`;
+                        const qty = it.quantity || it.qty || 1;
+                        const price = it.price || it.product?.price || 0;
+
+                        return (
+                          <div key={idx} className="flex justify-between">
+                            <span>{name} x{qty}</span>
+                            <span className="text-neutral-400">
+                              {price > 0 ? `${(price * qty).toLocaleString("vi-VN")} đ` : ""}
+                            </span>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <p className="text-neutral-500 italic">Chi tiết đơn hàng đang cập nhật</p>
+                    )}
                   </div>
 
-                  <div className="flex justify-between items-center pt-2 border-t border-neutral-800/60 text-xs">
+                  <div className="flex justify-between items-center pt-2.5 border-t border-neutral-800 text-xs">
                     <span className="text-neutral-400">Tổng thanh toán</span>
                     <span className="font-bold text-amber-400 text-sm">
-                      {ord.total.toLocaleString("vi-VN")} đ
+                      {ord.total ? Number(ord.total).toLocaleString("vi-VN") : 0} đ
                     </span>
                   </div>
                 </div>

@@ -1,4 +1,3 @@
-// frontend/services/auth.service.ts
 import { AuthResponse } from "@/types";
 
 export const loginApi = async (email: string, password: string): Promise<AuthResponse> => {

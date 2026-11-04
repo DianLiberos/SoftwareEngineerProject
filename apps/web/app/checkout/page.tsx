@@ -1,7 +1,7 @@
-// frontend/app/checkout/page.tsx
+// apps/web/app/checkout/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCartStore } from "@/store/useCartStore";
@@ -12,52 +12,21 @@ import {
 } from "@/services/order.service";
 
 type PaymentMethod = "WALLET" | "BANK_CARD";
-type PendingPayment = {
-  orderId: string;
-  cartSignature: string;
-};
-
-const PENDING_PAYMENT_KEY = `brewlite_pending_payment_${DEMO_BACKEND_USER_ID}`;
-
-function getPendingPayment(): PendingPayment | null {
-  const savedPayment = localStorage.getItem(PENDING_PAYMENT_KEY);
-  if (!savedPayment) return null;
-
-  try {
-    const parsed: unknown = JSON.parse(savedPayment);
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      "orderId" in parsed &&
-      typeof parsed.orderId === "string" &&
-      "cartSignature" in parsed &&
-      typeof parsed.cartSignature === "string"
-    ) {
-      return {
-        orderId: parsed.orderId,
-        cartSignature: parsed.cartSignature,
-      };
-    }
-  } catch {
-    // Replace corrupt local state with a fresh order on the next attempt.
-  }
-
-  localStorage.removeItem(PENDING_PAYMENT_KEY);
-  return null;
-}
 
 export default function CheckoutPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
-  // Zustand state & actions
+  // Zustand state
   const items = useCartStore((state) => state.items);
   const getTotalPrice = useCartStore((state) => state.getTotalPrice);
   const clearCart = useCartStore((state) => state.clearCart);
 
-  // Local state
+  // Local state & Ref khóa chống spam click
   const [method, setMethod] = useState<PaymentMethod>("WALLET");
   const [isProcessing, setIsProcessing] = useState(false);
+  const isSubmitting = useRef(false);
+
   const [completedOrder, setCompletedOrder] = useState<{
     orderId: string;
     status: string;
@@ -65,13 +34,15 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     setMounted(true);
+    // Dọn dẹp sạch key rác cũ nếu còn sót lại từ các bản thử nghiệm trước
+    localStorage.removeItem(`brewlite_pending_payment_${DEMO_BACKEND_USER_ID}`);
   }, []);
 
   if (!mounted) return null;
 
   const totalPrice = getTotalPrice();
 
-  // Kiểm tra giỏ hàng rỗng (nếu khách chưa thanh toán mà cố tình gõ link /checkout)
+  // Kiểm tra giỏ hàng rỗng
   if (items.length === 0 && !completedOrder) {
     return (
       <div className="min-h-screen bg-neutral-900 text-white flex flex-col items-center justify-center p-6 text-center">
@@ -87,63 +58,52 @@ export default function CheckoutPage() {
     );
   }
 
-  // Xử lý luồng đặt hàng & thanh toán (Task 8 & 10)
+  // Xử lý tạo đơn và thanh toán
   const handlePayment = async () => {
+    // Chặn tuyệt đối nếu đang trong tiến trình xử lý (chống bấm đúp trên điện thoại)
+    if (isSubmitting.current || isProcessing) return;
+    isSubmitting.current = true;
+    setIsProcessing(true);
+
     try {
-      setIsProcessing(true);
-
-      const cartSignature = JSON.stringify(items);
-      let pendingPayment = getPendingPayment();
-
-      if (pendingPayment?.cartSignature !== cartSignature) {
-        pendingPayment = null;
-      }
-
-      if (!pendingPayment) {
-        const order = await createOrderApi({
-          userId: DEMO_BACKEND_USER_ID,
-          items,
-        });
-        pendingPayment = { orderId: order.id, cartSignature };
-        localStorage.setItem(
-          PENDING_PAYMENT_KEY,
-          JSON.stringify(pendingPayment),
-        );
-      }
-
-      // Reuse the order and key if the request is retried or its response is lost.
-      const paymentResult = await processPaymentApi({
-        orderId: pendingPayment.orderId,
-        method,
-        idempotencyKey: `pay-${pendingPayment.orderId}`,
+      // 1. Tạo đơn mới trực tiếp vào PostgreSQL
+      const order = await createOrderApi({
+        userId: DEMO_BACKEND_USER_ID,
+        items,
       });
 
-      // 4. Xóa sạch giỏ hàng sau khi thanh toán thành công
-      clearCart();
-      localStorage.removeItem(PENDING_PAYMENT_KEY);
+      // 2. Thanh toán đơn vừa tạo bằng mã đơn duy nhất
+      const paymentResult = await processPaymentApi({
+        orderId: order.id,
+        method,
+        idempotencyKey: `pay-${order.id}-${Date.now()}`,
+      });
 
-      // 5. Lưu đơn thành công để chuyển sang Wireframe Screen (5)
+      // 3. Xóa sạch giỏ hàng khi thanh toán thành công
+      clearCart();
+
+      // 4. Chuyển sang màn hình xác nhận thành công
       setCompletedOrder({
-        orderId: paymentResult.orderId,
-        status: paymentResult.status,
+        orderId: order.id,
+        status: paymentResult.status || "PAID",
       });
     } catch (error) {
       alert(
         error instanceof Error
           ? error.message
-          : "Có lỗi xảy ra trong quá trình xử lý đơn hàng. Vui lòng thử lại!",
+          : "Có lỗi xảy ra trong quá trình xử lý đơn hàng. Vui lòng thử lại!"
       );
     } finally {
       setIsProcessing(false);
+      isSubmitting.current = false;
     }
   };
 
-  // VIEW 2: MÀN HÌNH (5) XÁC NHẬN ĐƠN HÀNG THÀNH CÔNG
+  // MÀN HÌNH (5) XÁC NHẬN ĐƠN HÀNG THÀNH CÔNG
   if (completedOrder) {
     return (
       <div className="min-h-screen bg-neutral-900 text-neutral-100 flex flex-col justify-between p-6 max-w-md mx-auto">
         <div className="flex-1 flex flex-col items-center justify-center text-center">
-          {/* Icon Checkmark xanh */}
           <div className="w-20 h-20 bg-emerald-500/20 border-2 border-emerald-500 rounded-full flex items-center justify-center mb-6">
             <svg className="w-10 h-10 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -153,7 +113,6 @@ export default function CheckoutPage() {
           <h1 className="text-2xl font-extrabold text-white">Đặt hàng thành công</h1>
           <p className="text-neutral-400 text-sm mt-1">Cảm ơn bạn đã trải nghiệm BrewLite</p>
 
-          {/* Hộp thông tin mã đơn & trạng thái */}
           <div className="w-full bg-neutral-800/60 border border-neutral-700/60 rounded-2xl p-5 mt-8 space-y-3">
             <div className="flex justify-between items-center text-sm">
               <span className="text-neutral-400">Mã đơn hàng</span>
@@ -174,7 +133,6 @@ export default function CheckoutPage() {
           </p>
         </div>
 
-        {/* Nút Về trang chủ */}
         <div className="pt-6">
           <Link
             href="/"
@@ -187,10 +145,8 @@ export default function CheckoutPage() {
     );
   }
 
-  // VIEW 1: MÀN HÌNH (4) THANH TOÁN (CHECKOUT FORM)
   return (
     <div className="min-h-screen bg-neutral-900 text-neutral-100 pb-36">
-      {/* Header */}
       <header className="sticky top-0 z-10 flex items-center gap-3 px-6 py-4 bg-neutral-900/80 backdrop-blur border-b border-neutral-800">
         <button
           onClick={() => router.back()}
@@ -204,7 +160,6 @@ export default function CheckoutPage() {
       </header>
 
       <main className="max-w-md mx-auto px-6 pt-6 space-y-6">
-        {/* Hộp tổng tiền */}
         <section className="bg-neutral-800/50 border border-neutral-800 rounded-2xl p-5 flex items-center justify-between">
           <div>
             <span className="text-xs text-neutral-400 font-medium">Tổng tiền thanh toán</span>
@@ -217,7 +172,6 @@ export default function CheckoutPage() {
           </span>
         </section>
 
-        {/* Cụm chọn phương thức thanh toán */}
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-neutral-200">Phương thức thanh toán</h2>
@@ -225,7 +179,6 @@ export default function CheckoutPage() {
           </div>
 
           <div className="space-y-3">
-            {/* Tùy chọn 1: Ví điện tử */}
             <label
               onClick={() => setMethod("WALLET")}
               className={`p-4 rounded-2xl border flex items-center justify-between cursor-pointer transition ${
@@ -250,7 +203,6 @@ export default function CheckoutPage() {
               <span className="text-xl">📱</span>
             </label>
 
-            {/* Tùy chọn 2: Thẻ ngân hàng */}
             <label
               onClick={() => setMethod("BANK_CARD")}
               className={`p-4 rounded-2xl border flex items-center justify-between cursor-pointer transition ${
@@ -277,7 +229,6 @@ export default function CheckoutPage() {
           </div>
         </section>
 
-        {/* Tóm tắt danh sách món */}
         <section className="bg-neutral-800/30 border border-neutral-800/80 rounded-2xl p-4">
           <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
             Chi tiết đơn đặt
@@ -286,10 +237,10 @@ export default function CheckoutPage() {
             {items.map((i, idx) => (
               <div key={idx} className="flex justify-between text-neutral-300">
                 <span>
-                  {i.name} ({i.size.name}) x{i.qty}
+                  {i.name} ({i.size?.name || "Tiêu chuẩn"}) x{i.qty}
                 </span>
                 <span className="font-medium text-neutral-200">
-                  {i.lineTotal.toLocaleString("vi-VN")} đ
+                  {(i.lineTotal || 0).toLocaleString("vi-VN")} đ
                 </span>
               </div>
             ))}
@@ -297,7 +248,6 @@ export default function CheckoutPage() {
         </section>
       </main>
 
-      {/* Floating Bottom Bar: Nút Xác nhận trả */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-neutral-950 via-neutral-950/90 to-transparent flex justify-center z-20">
         <button
           onClick={handlePayment}

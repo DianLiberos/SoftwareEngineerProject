@@ -1,46 +1,33 @@
-# 1. Dependency Directories
-# Bắt buộc phải chặn, nếu không repo sẽ nặng mấy GB
+# Dependencies
 node_modules/
 .pnp
 .pnp.js
 .yarn/
 
-# 2. Frontend (Next.js)
-frontend/.next/
-frontend/out/
-frontend/build/
-frontend/tsbuildinfo
-frontend/next-env.d.ts
+# Build & Cache (Bắt sạch mọi cấp thư mục)
+**/.next/
+**/out/
+**/build/
+**/.turbo/
+*.tsbuildinfo
+next-env.d.ts
+apps/api/dist/
+apps/api/src/generated/
 
-# 3. Backend (NestJS)
-backend/dist/
-backend/out/
-backend/src/generated/prisma/
-
-# 4. Environment Variables
-# CHÚ Ý: Đừng bao giờ push file chứa mật khẩu DB lên Git
+# Environment
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env*.local
 *.env
 
-# 5. OS & Editor generated files
+# IDE & OS
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
 
-# 6. Logs & Testing
+# Logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 coverage/
-
-cautrucBrewLite.txtapps/web/.next/
-apps/web/out/
-apps/web/build/
-apps/api/dist/
-apps/api/src/generated/
-*.tsbuildinfo

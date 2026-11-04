@@ -1,28 +1,29 @@
 import type { NextConfig } from "next";
+import os from "os";
+
+function getLocalNetworkIps(): string[] {
+  const interfaces = os.networkInterfaces();
+  const ips: string[] = [];
+
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name] || []) {
+      if (iface.family === "IPv4" && !iface.internal) {
+        ips.push(iface.address);
+      }
+    }
+  }
+  return ips;
+}
+
+const activeIps = getLocalNetworkIps();
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
-  
   allowedDevOrigins: [
-    "192.168.1.18",
-    "10.79.228.98",
-    "10.79.228.98:3000",
-    "192.168.1.18:3000",
-    "192.168.85.98",
-    "192.168.85.98:3000",
     "localhost:3000",
+    "127.0.0.1:3000",
+    ...activeIps.map((ip) => `${ip}:3000`),
+    ...activeIps,
   ],
-
-  turbopack: {
-    rules: {
-      "*.css": {
-        loaders: ["@tailwindcss/turbopack"],
-        as: "*.css",
-      },
-    },
-  },
-};
+} as any; 
 
 export default nextConfig;
