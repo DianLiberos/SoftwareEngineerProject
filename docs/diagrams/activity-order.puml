@@ -1,0 +1,78 @@
+cat << 'EOF' > docs/diagrams/activity-order.puml
+@startuml activity-order
+title Sơ Đồ Hoạt Động Quy Trình Đặt Hàng & Thanh Toán (BrewLite)
+
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName "Segoe UI", Arial, sans-serif
+skinparam defaultFontSize 12
+skinparam ActivityVerticalGap 16
+skinparam ActivityDiamondBackgroundColor #FFF3CD
+skinparam ActivityDiamondBorderColor #856404
+skinparam ActivityBackgroundColor #FFFFFF
+skinparam ActivityBorderColor #0D6EFD
+skinparam ArrowColor #212529
+
+|#F8F9FA|Khách hàng|
+start
+:Duyệt thực đơn & tùy biến món nước\n(Chọn kích cỡ S/M/L, chọn Topping);
+:Quản lý giỏ hàng\n(Điều chỉnh số lượng, kiểm tra tạm tính);
+:Chuyển sang màn hình Thanh toán (/checkout);
+
+if (Trạng thái xác thực tài khoản?) then (Chưa đăng nhập)
+  :Đăng nhập tài khoản qua /login;
+else (Đã đăng nhập)
+endif
+
+|#F1F3F5|Hệ thống Backend|
+:Nhận yêu cầu tạo đơn;
+:Mở Database Transaction kiểm tra tồn kho & giá;
+
+if (Kiểm tra số lượng tồn kho (stock)?) then (Không đủ)
+  :Rollback Transaction;
+  |Khách hàng|
+  :Hiển thị thông báo "Sản phẩm không đủ tồn kho";
+  stop
+else (Đủ tồn kho)
+  |Hệ thống Backend|
+  if (Đơn có áp dụng mã Coupon?) then (Có)
+    :Xác thực hạn dùng, giá trị tối thiểu\nvà kiểm tra lịch sử đã dùng mã;
+    note right: Nếu không hợp lệ -> Bỏ qua chiết khấu
+  endif
+  :Tính tổng tiền theo bảng giá niêm yết trong DB;
+  :Trừ tồn kho sản phẩm (stock decrement);
+  :Tạo bản ghi Order (PENDING) & OrderItem;
+  :Commit Transaction -> Trả về orderId cho Client;
+endif
+
+|Khách hàng|
+:Chọn phương thức thanh toán (Ví điện tử / Thẻ);\nSinh mã Idempotency-Key và bấm "Xác nhận trả";
+
+|Hệ thống Backend|
+:Nhận POST /payments kèm Idempotency-Key;\nMở Transaction và khóa bản ghi Order;
+
+if (Kiểm tra giao dịch trước đó?) then (Đã thanh toán)
+  :Trả về kết quả cũ (Cơ chế Idempotent chống trừ tiền kép);
+else (Chưa thanh toán)
+  :Gọi Mock Payment Gateway xử lý trừ tiền;
+  if (Kết quả giao dịch?) then (Thành công)
+    :Tạo bản ghi Payment lưu vào DB;
+    :Cập nhật trạng thái Order: PENDING -> PAID;
+    :Cộng điểm thưởng thành viên;
+    if (Có áp dụng coupon?) then (Có)
+      :Ghi nhận lịch sử vào CouponRedemption;
+    endif
+    :Commit Transaction;
+    |Khách hàng|
+    :Xóa giỏ hàng và chuyển sang màn hình thành công;\nHiển thị mã nhận nước tại quầy;
+    stop
+  else (Thất bại)
+    |Hệ thống Backend|
+    :Cập nhật trạng thái đơn: PAYMENT_FAILED;
+    :Commit Transaction;
+    |Khách hàng|
+    :Hiển thị lỗi và cho phép chọn lại phương thức;
+    stop
+  endif
+endif
+@enduml
+EOF

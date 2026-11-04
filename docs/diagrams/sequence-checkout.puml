@@ -1,0 +1,96 @@
+@startuml sequence-checkout
+title Sơ Đồ Tuần Tự Khởi Tạo Đơn & Thanh Toán Lũy Đẳng (BrewLite)
+
+autonumber
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName "Segoe UI", Arial, sans-serif
+skinparam defaultFontSize 12
+
+actor "Khách hàng" as User
+participant "Trình duyệt Web" as Web
+box "Backend Core Engine (NestJS)" #F8F9FA
+  participant "OrdersController\n& Service" as OrderSvc
+  participant "PaymentsController\n& Service" as PaySvc
+end box
+database "Cơ sở dữ liệu" as DB
+participant "Cổng thanh toán" as Gateway
+
+== GIAI ĐOẠN 1: KHỞI TẠO ĐƠN HÀNG ==
+
+User -> Web: Bấm "Xác nhận trả" tại /checkout
+activate Web
+Web -> OrderSvc: POST /orders\n{ userId, items: [{productId, quantity}], couponCode }
+activate OrderSvc
+
+OrderSvc -> DB: $transaction: Bắt đầu giao dịch tạo đơn
+activate DB
+OrderSvc -> DB: SELECT * FROM "Product" WHERE id IN (...)
+DB --> OrderSvc: Trả về giá niêm yết & tồn kho hiện tại
+
+alt #FFEBEE Không đủ số lượng tồn kho
+  OrderSvc -> DB: ROLLBACK Transaction
+  OrderSvc --> Web: HTTP 400 Bad Request ("Hết hàng / Không đủ tồn kho")
+  Web --> User: Cảnh báo hết hàng trên giao diện
+else #E8F5E9 Tồn kho đáp ứng đủ
+  opt Có mã giảm giá (couponCode)
+    OrderSvc -> DB: SELECT FROM "Coupon" & "CouponRedemption"
+    DB --> OrderSvc: Dữ liệu mã & lịch sử sử dụng của User
+    note right of OrderSvc: Kiểm tra: Hạn dùng, đơn tối thiểu,\nchưa từng sử dụng mã này
+  end
+
+  OrderSvc -> DB: UPDATE "Product" SET stock = stock - quantity
+  OrderSvc -> DB: INSERT INTO "Order" (status='PENDING', totalAmount)
+  OrderSvc -> DB: INSERT INTO "OrderItem" (...)
+  OrderSvc -> DB: COMMIT Transaction
+  deactivate DB
+
+  OrderSvc --> Web: HTTP 201 Created { orderId: "ord-123", status: "PENDING" }
+  deactivate OrderSvc
+end
+
+== GIAI ĐOẠN 2: XỬ LÝ THANH TOÁN LŨY ĐẲNG ==
+
+Web -> Web: Sinh Idempotency-Key ("pay-ord-123-timestamp")
+Web -> PaySvc: POST /payments\nHeader: [Idempotency-Key] | Body: { orderId, method }
+activate PaySvc
+
+PaySvc -> DB: $transaction: Khóa bản ghi Order (FOR UPDATE)
+activate DB
+PaySvc -> DB: SELECT * FROM "Payment" WHERE orderId = 'ord-123'
+DB --> PaySvc: Kết quả kiểm tra giao dịch
+
+alt #FFF3E0 Trùng Idempotency-Key: Đơn đã thanh toán trước đó
+  PaySvc -> DB: ROLLBACK Transaction
+  PaySvc --> Web: HTTP 200 OK (Trả về kết quả thanh toán cũ)
+else #FFFFFF Đơn hàng PENDING hợp lệ chưa thanh toán
+  PaySvc -> Gateway: Gửi yêu cầu trừ tiền { orderId, amount, method }
+  activate Gateway
+  Gateway --> PaySvc: Giao dịch thành công
+  deactivate Gateway
+
+  alt #E8F5E9 Thanh toán thành công
+    PaySvc -> DB: INSERT INTO "Payment" (status='SUCCESS', idempotencyKey)
+    PaySvc -> DB: UPDATE "Order" SET status = 'PAID'
+    PaySvc -> DB: UPDATE "User" SET loyaltyPoints = loyaltyPoints + pointsEarned
+    opt Đơn có dùng mã giảm giá
+      PaySvc -> DB: INSERT INTO "CouponRedemption" (...)
+    end
+    PaySvc -> DB: COMMIT Transaction
+    deactivate DB
+
+    PaySvc --> Web: HTTP 200 OK { orderId: "ord-123", status: "PAID" }
+    deactivate PaySvc
+
+    Web -> Web: clearCart() & dọn sạch trạng thái
+    Web --> User: Chuyển màn hình (5) "Đặt hàng thành công" & hiển thị mã nhận nước
+  else #FFEBEE Giao dịch thất bại / Từ chối thẻ
+    PaySvc -> DB: UPDATE "Order" SET status = 'PAYMENT_FAILED'
+    PaySvc -> DB: COMMIT Transaction
+    PaySvc --> Web: HTTP 400 Bad Request ("Thanh toán thất bại")
+    Web --> User: Báo lỗi & cho phép đổi phương thức khác
+  end
+end
+deactivate Web
+
+@enduml
+EOF
