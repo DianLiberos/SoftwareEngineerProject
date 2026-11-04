@@ -1,0 +1,57 @@
+@startuml deployment
+title Sơ Đồ Triển Khai Hệ Thống Môi Trường Thực Tế (Deployment Diagram - BrewLite)
+
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName "Segoe UI", Arial, sans-serif
+skinparam defaultFontSize 12
+skinparam roundCorner 10
+skinparam nodeBackgroundColor #F8F9FA
+skinparam nodeBorderColor #6C757D
+skinparam componentBackgroundColor #FFFFFF
+skinparam componentBorderColor #0D6EFD
+skinparam databaseBackgroundColor #E8F5E9
+skinparam databaseBorderColor #2E7D32
+
+node "Thiết bị Khách hàng" as ClientDevice <<Device>> {
+  node "Trình duyệt Web Di động / Desktop" as Browser <<Environment>> {
+    component "BrewLite Web App\n(Next.js 16 Client Bundle)" as SPA <<Component>>
+    artifact "Zustand State\n(Giỏ hàng & Auth Token)" as LocalState <<Artifact>>
+    SPA ..> LocalState : Quản lý state
+  }
+}
+
+cloud "Mạng Internet & Hạ tầng Mạng nội bộ (LAN / Wi-Fi)" as Network {
+}
+
+node "Máy chủ Ứng dụng" as AppServer <<Device>> {
+  
+  node "Node.js Runtime" as WebHost <<Environment>> {
+    component "Next.js Server (Port 3000)\n- App Router & Server Components\n- Tự động nhận diện Network IP" as NextServer <<Component>>
+  }
+
+  node "Docker Container Engine" as DockerRuntime <<Environment>> {
+    
+    node "Container: brewlite-api" as ApiContainer <<Execution Environment>> {
+      component "NestJS Application (Port 3001)\n- Orders Module\n- Payments Module (Idempotency)\n- Loyalty Module\n- Prisma Client Engine" as NestApp <<Component>>
+    }
+
+    node "Container: brewlite-db" as DbContainer <<Execution Environment>> {
+      database "PostgreSQL Database (Port 5432)\n- Database Volume: db_data\n- Authoritative State\n- ACID Transactions" as PostgresDB <<Database>>
+    }
+  }
+}
+
+cloud "Dịch vụ Thanh toán Bên thứ ba" as ExternalCloud {
+  component "Mock Payment Gateway" as PaymentGW <<External System>>
+}
+
+' Kết nối và giao thức mạng
+SPA -- Network : HTTPS / WSS
+Network -- NextServer : HTTP:3000 (Giao diện HTML/CSS)
+SPA --> NestApp : HTTP REST API (Port 3001)\n[JSON Payload + Idempotency-Key]
+
+NextServer ..> NestApp : Reverse Proxy / API Fetch
+NestApp --> PostgresDB : TCP Connection Pool (Port 5432)\n[Prisma Binary Protocol]
+NestApp --> PaymentGW : HTTPS REST API\n[Giao dịch thanh toán]
+
+@enduml
