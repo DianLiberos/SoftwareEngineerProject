@@ -1,68 +1,71 @@
 import { Product } from "@/types";
 
-export const MOCK_PRODUCTS: Product[] = [
-  {
-    id: "1",
-    name: "Cà phê sữa",
-    price: 35000,
-    imageUrl: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500&q=80",
-    stock: 20,
-    sizes: [
-      { name: "S", price: 0 },
-      { name: "M", price: 5000 },
-      { name: "L", price: 10000 },
-    ],
-    toppings: [
-      { name: "Trân châu trắng", price: 10000 },
-      { name: "Thạch đào", price: 10000 },
-    ],
-  },
-  {
-    id: "2",
-    name: "Americano",
-    price: 40000,
-    imageUrl: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=500&q=80",
-    stock: 15,
-    sizes: [
-      { name: "S", price: 0 },
-      { name: "M", price: 5000 },
-      { name: "L", price: 10000 },
-    ],
-    toppings: [{ name: "Thạch cà phê", price: 8000 }],
-  },
-  {
-    id: "3",
-    name: "Cappuccino",
-    price: 45000,
-    imageUrl: "https://images.unsplash.com/photo-1534778101976-62847782c213?w=500&q=80",
-    stock: 10,
-    sizes: [
-      { name: "S", price: 0 },
-      { name: "M", price: 5000 },
-      { name: "L", price: 10000 },
-    ],
-    toppings: [{ name: "Bột cacao", price: 5000 }],
-  },
-  {
-    id: "4",
-    name: "Trà đào",
-    price: 39000,
-    imageUrl: "https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=500&q=80",
-    stock: 25,
-    sizes: [
-      { name: "M", price: 0 },
-      { name: "L", price: 6000 },
-    ],
-    toppings: [{ name: "Miếng đào ngâm", price: 12000 }],
-  },
-];
-
-// Hàm lấy toàn bộ Menu
-export const getProducts = (): Product[] => {
-  return MOCK_PRODUCTS;
+const getApiUrl = () => {
+  if (typeof window !== "undefined") {
+    return `http://${window.location.hostname}:3001`;
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 };
 
-// Hàm lấy chi tiết món theo ID (Dùng cho dynamic route)
-export const getProductById = (id: string): Product | undefined => {
-  return MOCK_PRODUCTS.find((p) => p.id === id);
+const mapProductFromApi = (p: any): Product => {
+  const unitPrice = Number(p.basePrice ?? p.price ?? 0);
+
+  return {
+    id: String(p.id),
+    name: p.name,
+    description: p.description || "",
+    price: unitPrice,       
+    basePrice: unitPrice,  
+    stock: Number(p.stock || 0),
+    imageUrl: p.imageUrl || "/next.svg",
+    isActive: p.isActive !== undefined ? Boolean(p.isActive) : true,
+
+    sizes: (p.sizes || []).map((s: any) => {
+      const sizePrice = Number(s.price ?? s.priceAdjustment ?? 0);
+      return {
+        id: String(s.id),
+        name: s.name,
+        price: sizePrice,
+        priceAdjustment: sizePrice,
+      };
+    }),
+
+    toppings: (p.toppings || []).map((t: any) => {
+      const toppingPrice = Number(t.price ?? t.priceAdjustment ?? 0);
+      return {
+        id: String(t.id),
+        name: t.name,
+        price: toppingPrice,
+        priceAdjustment: toppingPrice,
+      };
+    }),
+  };
+};
+
+export const getProducts = async (): Promise<Product[]> => {
+  try {
+    const res = await fetch(`${getApiUrl()}/products`, {
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error("Không thể tải danh sách sản phẩm");
+    const data = await res.json();
+    return Array.isArray(data) ? data.map(mapProductFromApi) : [];
+  } catch (error) {
+    console.error("Lỗi lấy sản phẩm từ Backend:", error);
+    return [];
+  }
+};
+
+export const getProductById = async (id: string): Promise<Product | null> => {
+  try {
+    const res = await fetch(`${getApiUrl()}/products/${id}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return mapProductFromApi(data);
+  } catch (error) {
+    console.error(`Lỗi lấy chi tiết sản phẩm #${id}:`, error);
+    return null;
+  }
 };

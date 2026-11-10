@@ -1,49 +1,50 @@
-import { AuthResponse } from "@/types";
-
-export const loginApi = async (email: string, password: string): Promise<AuthResponse> => {
-  await new Promise((resolve) => setTimeout(resolve, 600)); // Giả lập độ trễ mạng
-
-  if (!email || !password) {
-    throw new Error("Vui lòng nhập đầy đủ email và mật khẩu");
+const getApiUrl = () => {
+  if (typeof window !== "undefined") {
+    return `http://${window.location.hostname}:3001`;
   }
-
-  // Giả lập token JWT chuẩn
-  return {
-    accessToken: `mock-jwt-token-${Date.now()}`,
-    user: {
-      id: "usr-101",
-      email: email,
-      name: email.split("@")[0] || "Khách hàng",
-      loyaltyPoints: 50,
-    },
-  };
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 };
 
-// Thêm vào frontend/services/auth.service.ts
+// Hàm đăng nhập nhận email, password
+export const loginApi = async (email: string, password: string) => {
+  const res = await fetch(`${getApiUrl()}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
 
-export const registerApi = async (
-  name: string,
-  email: string,
-  password: string
-): Promise<AuthResponse> => {
-  await new Promise((resolve) => setTimeout(resolve, 800)); // Giả lập độ trễ mạng
-
-  if (!name || !email || !password) {
-    throw new Error("Vui lòng điền đầy đủ tất cả các trường");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Đăng nhập không thành công");
   }
 
-  if (password.length < 6) {
-    throw new Error("Mật khẩu phải có ít nhất 6 ký tự");
+  return res.json();
+};
+
+// Hàm đăng ký nhận name, email, password
+export const registerApi = async (data: { name: string; email: string; password: string }) => {
+  const res = await fetch(`${getApiUrl()}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Đăng ký không thành công");
   }
 
-  // Giả lập backend tạo user mới và cấp ngay JWT token
-  return {
-    accessToken: `mock-jwt-token-register-${Date.now()}`,
-    user: {
-      id: `usr-${Date.now().toString().slice(-4)}`,
-      email,
-      name,
-      loyaltyPoints: 0, 
-    },
-  };
+  return res.json();
+};
+
+export const authApi = {
+  login: loginApi,
+  register: registerApi,
+  async getMe(token: string) {
+    const res = await fetch(`${getApiUrl()}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("Phiên đăng nhập hết hạn");
+    return res.json();
+  },
 };
