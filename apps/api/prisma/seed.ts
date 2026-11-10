@@ -26,6 +26,7 @@ async function main() {
       name: "Cà phê sữa",
       price: 35000,
       stock: 20,
+      imageUrl: "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80",
       sizes: [
         { name: "S", price: 0 },
         { name: "M", price: 5000 },
@@ -41,6 +42,7 @@ async function main() {
       name: "Americano",
       price: 40000,
       stock: 15,
+      imageUrl: "https://images.unsplash.com/photo-1551030173-122aabc4489c?auto=format&fit=crop&w=600&q=80",
       sizes: [
         { name: "S", price: 0 },
         { name: "M", price: 5000 },
@@ -53,6 +55,7 @@ async function main() {
       name: "Cappuccino",
       price: 45000,
       stock: 10,
+      imageUrl: "https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&fit=crop&w=600&q=80",
       sizes: [
         { name: "S", price: 0 },
         { name: "M", price: 5000 },
@@ -65,6 +68,7 @@ async function main() {
       name: "Trà đào",
       price: 39000,
       stock: 25,
+      imageUrl: "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=600&q=80",
       sizes: [
         { name: "M", price: 0 },
         { name: "L", price: 6000 },
@@ -72,6 +76,7 @@ async function main() {
       toppings: [{ name: "Miếng đào ngâm", price: 12000 }],
     },
   ];
+
   for (const product of products) {
     await prisma.product.upsert({
       where: { id: product.id },
@@ -79,19 +84,24 @@ async function main() {
         name: product.name,
         price: product.price,
         stock: product.stock,
+        imageUrl: product.imageUrl,
       },
       create: {
         id: product.id,
         name: product.name,
         price: product.price,
         stock: product.stock,
+        imageUrl: product.imageUrl,
       },
     });
+
     await prisma.productSize.deleteMany({ where: { productId: product.id } });
     await prisma.productTopping.deleteMany({ where: { productId: product.id } });
+
     await prisma.productSize.createMany({
       data: product.sizes.map((size) => ({ ...size, productId: product.id })),
     });
+
     await prisma.productTopping.createMany({
       data: product.toppings.map((topping) => ({
         ...topping,
