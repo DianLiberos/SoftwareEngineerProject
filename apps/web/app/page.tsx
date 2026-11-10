@@ -1,23 +1,41 @@
-// frontend/app/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useCartStore } from "@/store/useCartStore";
-import { useAuthStore } from "@/store/useAuthStore";
 import { getProducts } from "@/services/product.service";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useCartStore } from "@/store/useCartStore";
+import { Product } from "@/types";
 
 export default function HomePage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
-  const products = getProducts();
 
-  const totalItems = useCartStore((state) => state.getTotalItems());
+  // Lấy trạng thái đăng nhập từ Auth Store
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
+  // Lấy giỏ hàng từ Cart Store để tính tổng số lượng món
+  const items = useCartStore((state) => state.items);
+  const totalItems = items.reduce((sum, item) => sum + item.qty, 0);
+
   useEffect(() => {
     setMounted(true);
+    getProducts()
+      .then((data) => setProducts(data))
+      .catch((err) => console.error("Lỗi tải thực đơn:", err))
+      .finally(() => setIsLoading(false));
   }, []);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-neutral-950 text-white flex flex-col items-center justify-center gap-3">
+        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+        <p className="animate-pulse text-neutral-400 text-sm">Đang tải thực đơn BrewLite...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 pb-28">
@@ -25,7 +43,9 @@ export default function HomePage() {
       <header className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-neutral-950/80 backdrop-blur border-b border-neutral-800">
         <div className="flex items-center gap-2">
           <span className="text-xl font-bold tracking-tight text-white">BrewLite</span>
-          <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-medium">Coffee</span>
+          <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-medium">
+            Coffee
+          </span>
         </div>
 
         <div>
@@ -35,7 +55,7 @@ export default function HomePage() {
               className="flex items-center gap-2 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 px-3 py-1.5 rounded-xl transition active:scale-95"
             >
               <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs font-bold">
-                {user.name.charAt(0).toUpperCase()}
+                {user.name ? user.name.charAt(0).toUpperCase() : "U"}
               </div>
               <span className="text-xs font-semibold text-neutral-200 max-w-[100px] truncate">
                 {user.name}
@@ -55,43 +75,50 @@ export default function HomePage() {
       {/* Main Menu Grid */}
       <main className="max-w-4xl mx-auto px-6 pt-8">
         <h1 className="text-2xl font-bold text-white">Thực đơn hôm nay</h1>
-        <p className="text-sm text-neutral-400 mt-1">Chọn món để tùy chỉnh size, topping và đặt hàng nhanh chóng</p>
+        <p className="text-sm text-neutral-400 mt-1">
+          Chọn món để tùy chỉnh size, topping và đặt hàng nhanh chóng
+        </p>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-          {products.map((product) => (
-            <Link
-              key={product.id}
-              href={`/product/${product.id}`}
-              className="group bg-neutral-900/70 rounded-2xl overflow-hidden border border-neutral-800/80 hover:border-neutral-700 transition flex flex-col justify-between"
-            >
-              <div>
-                <div className="aspect-square w-full overflow-hidden bg-neutral-800 relative">
-                  <img
-                    src={product.imageUrl}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                  />
+        {products.length === 0 ? (
+          <div className="bg-neutral-900/40 border border-neutral-800 rounded-2xl p-8 text-center mt-6">
+            <p className="text-neutral-400 text-sm">Hiện chưa có món nào trong thực đơn.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+            {products.map((product) => (
+              <Link
+                key={product.id}
+                href={`/product/${product.id}`}
+                className="group bg-neutral-900/70 rounded-2xl overflow-hidden border border-neutral-800/80 hover:border-neutral-700 transition flex flex-col justify-between"
+              >
+                <div>
+                  <div className="aspect-square w-full overflow-hidden bg-neutral-800 relative">
+                    <img
+                      src={product.imageUrl || "/next.svg"}
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                    />
+                  </div>
+                  <div className="p-3.5">
+                    <h3 className="font-semibold text-neutral-200 text-sm group-hover:text-amber-400 transition line-clamp-1">
+                      {product.name}
+                    </h3>
+                    <p className="text-amber-500 font-bold text-xs mt-1">
+                      Giá từ {(product.basePrice ?? product.price ?? 0).toLocaleString("vi-VN")} đ
+                    </p>
+                  </div>
                 </div>
-                <div className="p-3.5">
-                  <h3 className="font-semibold text-neutral-200 text-sm group-hover:text-amber-400 transition line-clamp-1">
-                    {product.name}
-                  </h3>
-                  <p className="text-amber-500 font-bold text-xs mt-1">
-                    Giá từ {product.price.toLocaleString("vi-VN")} đ
-                  </p>
-                </div>
-              </div>
 
-              {/* Nút điều hướng rõ ràng */}
-              <div className="p-3.5 pt-0">
-                <div className="w-full py-2 text-xs font-semibold text-amber-400 bg-amber-400/10 group-hover:bg-amber-400 group-hover:text-neutral-950 rounded-xl transition flex items-center justify-center gap-1">
-                  <span>Tùy chọn món</span>
-                  <span>&rarr;</span>
+                <div className="p-3.5 pt-0">
+                  <div className="w-full py-2 text-xs font-semibold text-amber-400 bg-amber-400/10 group-hover:bg-amber-400 group-hover:text-neutral-950 rounded-xl transition flex items-center justify-center gap-1">
+                    <span>Tùy chọn món</span>
+                    <span>&rarr;</span>
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </main>
 
       {/* Floating Bottom Cart Bar */}
@@ -102,7 +129,12 @@ export default function HomePage() {
         >
           <div className="flex items-center gap-2">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+              />
             </svg>
             <span>Xem giỏ hàng ({mounted ? totalItems : 0})</span>
           </div>

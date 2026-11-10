@@ -1,11 +1,24 @@
-import { CartItem, Order, OrderStatus } from "@/types";
+import { useAuthStore } from "@/store/useAuthStore";
+import { Order, OrderStatus } from "@/types";
 
-export const DEMO_BACKEND_USER_ID = "user-demo-01";
+const getApiUrl = () => {
+  if (typeof window !== "undefined") {
+    return `http://${window.location.hostname}:3001`;
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+};
+
+// Khai báo rõ ràng các Type/Interface
+export interface CreateOrderItemPayload {
+  productId: string;
+  sizeName?: string;
+  toppings?: string[];
+  quantity: number;
+}
 
 export interface CreateOrderPayload {
   userId?: string;
-  items: CartItem[];
-  total?: number;
+  items: Array<CreateOrderItemPayload | any>;
   couponCode?: string;
 }
 
@@ -16,26 +29,32 @@ export interface PaymentPayload {
   amount?: number;
 }
 
-const getApiUrl = () => {
-  if (typeof window !== "undefined") {
-    return `http://${window.location.hostname}:3001`;
-  }
-  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-};
-
-// Tạo đơn hàng mới trong PostgreSQL
+// Hàm tạo đơn hàng
 export const createOrderApi = async (payload: CreateOrderPayload): Promise<Order> => {
   const API_URL = getApiUrl();
+  const currentUser = useAuthStore.getState().user;
+  const targetUserId = payload.userId || currentUser?.id;
+
+  if (!targetUserId) {
+    throw new Error("Vui lòng đăng nhập tài khoản để tiến hành đặt hàng");
+  }
+
+  const normalizedItems = payload.items.map((item: any) => ({
+    productId: String(item.product?.id || item.productId || item.id),
+    quantity: Number(item.qty || item.quantity || 1),
+    sizeName: item.size?.name || item.sizeName || undefined,
+    toppings: item.toppings
+      ? item.toppings.map((t: any) => (typeof t === "string" ? t : t.name))
+      : undefined,
+  }));
+
   const requestBody: Record<string, any> = {
-    userId: payload.userId || DEMO_BACKEND_USER_ID,
-    items: payload.items.map((item: any) => ({
-      productId: String(item.product?.id || item.productId || item.id || "1"),
-      quantity: Number(item.qty || item.quantity || 1),
-    })),
+    userId: targetUserId,
+    items: normalizedItems,
   };
 
-  if (payload.couponCode) {
-    requestBody.couponCode = payload.couponCode;
+  if (payload.couponCode && payload.couponCode.trim() !== "") {
+    requestBody.couponCode = payload.couponCode.trim().toUpperCase();
   }
 
   const res = await fetch(`${API_URL}/orders`, {
@@ -48,22 +67,26 @@ export const createOrderApi = async (payload: CreateOrderPayload): Promise<Order
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || "Không thể tạo đơn hàng trên server");
+    throw new Error(errorData.message || "Không thể khởi tạo đơn hàng trên máy chủ");
   }
 
   return res.json();
 };
 
-// Thanh toán đơn hàng: POST /payments
+export const createOrder = createOrderApi;
+
+// Hàm xử lý thanh toán (Bảo vệ bằng Idempotency-Key chống trừ tiền kép)
 export const processPaymentApi = async (
   payload: PaymentPayload
 ): Promise<{ orderId: string; status: OrderStatus }> => {
   const API_URL = getApiUrl();
+  const idempotencyKey = payload.idempotencyKey || `pay-${payload.orderId}-${Date.now()}`;
+
   const res = await fetch(`${API_URL}/payments`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Idempotency-Key": payload.idempotencyKey || `pay-${payload.orderId}-${Date.now()}`,
+      "Idempotency-Key": idempotencyKey,
     },
     body: JSON.stringify({
       orderId: payload.orderId,
@@ -73,17 +96,23 @@ export const processPaymentApi = async (
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || "Thanh toán thất bại");
+    throw new Error(errorData.message || "Giao dịch thanh toán thất bại");
   }
 
   return res.json();
 };
 
-// Lấy lịch sử đơn từ PostgreSQL: GET /orders/user/:userId
-export const getMyOrdersApi = async (userId: string = DEMO_BACKEND_USER_ID): Promise<Order[]> => {
+export const payOrder = processPaymentApi;
+
+// Lấy lịch sử đơn hàng của tài khoản đang đăng nhập
+export const getMyOrdersApi = async (userId?: string): Promise<Order[]> => {
   try {
     const API_URL = getApiUrl();
-    const res = await fetch(`${API_URL}/orders/user/${userId}`, {
+    const currentUserId = userId || useAuthStore.getState().user?.id;
+
+    if (!currentUserId) return [];
+
+    const res = await fetch(`${API_URL}/orders/user/${currentUserId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -94,7 +123,7 @@ export const getMyOrdersApi = async (userId: string = DEMO_BACKEND_USER_ID): Pro
     if (!res.ok) return [];
     return await res.json();
   } catch (error) {
-    console.error("Lỗi kết nối Backend:", error);
+    console.error("Lỗi khi tải lịch sử đơn hàng:", error);
     return [];
   }
 };

@@ -1,4 +1,3 @@
-// 1. Menu & Chi tiết
 export interface ProductOption {
   name: string;
   price: number;
@@ -8,13 +7,15 @@ export interface Product {
   id: string;
   name: string;
   price: number;
+  basePrice: number;
   imageUrl: string;
   stock: number;
   sizes?: ProductOption[];
   toppings?: ProductOption[];
+  isActive?: boolean;
+  description?: string;
 }
 
-// 2. Khuôn mẫu cho món hàng trong giỏ  
 export interface CartItem {
   productId: string;
   name: string;
@@ -22,10 +23,9 @@ export interface CartItem {
   size: ProductOption;
   toppings: ProductOption[];
   qty: number;
-  lineTotal: number; // (basePrice + size.price + sum(toppings)) * qty
+  lineTotal: number;
 }
 
-// 3. Máy trạng thái đơn hàng (Order State Machine - Task 10)
 export type OrderStatus = 
   | 'PENDING' 
   | 'PAID' 
@@ -35,7 +35,6 @@ export type OrderStatus =
   | 'COMPLETED' 
   | 'CANCELLED';
 
-// 4. Khuôn mẫu cho Đơn hàng trả về từ Backend
 export interface Order {
   id: string;
   userId: string;
@@ -45,7 +44,6 @@ export interface Order {
   items: CartItem[];
 }
 
-// 5. Định nghĩa cho User và Auth Response
 export interface User {
   id: string;
   email: string;
