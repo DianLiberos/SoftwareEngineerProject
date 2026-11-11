@@ -39,14 +39,27 @@ export const createOrderApi = async (payload: CreateOrderPayload): Promise<Order
     throw new Error("Vui lòng đăng nhập tài khoản để tiến hành đặt hàng");
   }
 
-  const normalizedItems = payload.items.map((item: any) => ({
-    productId: String(item.product?.id || item.productId || item.id),
-    quantity: Number(item.qty || item.quantity || 1),
-    sizeName: item.size?.name || item.sizeName || undefined,
-    toppings: item.toppings
-      ? item.toppings.map((t: any) => (typeof t === "string" ? t : t.name))
-      : undefined,
-  }));
+  const normalizedItems = payload.items.map((item: any) => {
+    const sizeName =
+      item.size?.name ||
+      (typeof item.size === "string" ? item.size : item.sizeName);
+
+    const toppingsList = Array.isArray(item.toppings)
+      ? item.toppings.map((t: any) => ({
+          name: typeof t === "string" ? t : t.name,
+          price:
+            typeof t === "object" && typeof t.price === "number" ? t.price : 0,
+        }))
+      : [];
+
+    return {
+      productId: String(item.product?.id || item.productId || item.id),
+      quantity: Number(item.qty || item.quantity || 1),
+      size: sizeName ? { name: sizeName } : undefined,
+      sizeName: sizeName || undefined,
+      toppings: toppingsList,
+    };
+  });
 
   const requestBody: Record<string, any> = {
     userId: targetUserId,
@@ -126,4 +139,26 @@ export const getMyOrdersApi = async (userId?: string): Promise<Order[]> => {
     console.error("Lỗi khi tải lịch sử đơn hàng:", error);
     return [];
   }
+};
+
+// Hủy đơn hàng và hoàn lại tồn kho: PATCH /orders/:id/cancel
+export const cancelOrderApi = async (
+  orderId: string,
+  reason?: string
+): Promise<Order> => {
+  const API_URL = getApiUrl();
+  const res = await fetch(`${API_URL}/orders/${orderId}/cancel`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ reason }),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Không thể hủy đơn hàng này");
+  }
+
+  return res.json();
 };

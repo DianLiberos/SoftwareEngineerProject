@@ -7,15 +7,19 @@ import Link from "next/link";
 import { useCartStore } from "@/store/useCartStore";
 import {
   createOrderApi,
-  DEMO_BACKEND_USER_ID,
   processPaymentApi,
 } from "@/services/order.service";
+import { useAuthStore } from "@/store/useAuthStore";
 
 type PaymentMethod = "WALLET" | "BANK_CARD";
 
 export default function CheckoutPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+
+  // Auth state
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   // Zustand state
   const items = useCartStore((state) => state.items);
@@ -34,11 +38,21 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     setMounted(true);
-    // Dọn dẹp sạch key rác cũ nếu còn sót lại từ các bản thử nghiệm trước
-    localStorage.removeItem(`brewlite_pending_payment_${DEMO_BACKEND_USER_ID}`);
   }, []);
 
-  if (!mounted) return null;
+  useEffect(() => {
+    if (mounted && !isAuthenticated) {
+      router.push("/login?redirect=/checkout");
+    }
+  }, [mounted, isAuthenticated, router]);
+
+  if (!mounted || !isAuthenticated || !user) {
+    return (
+      <div className="min-h-screen bg-neutral-900 text-neutral-400 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   const totalPrice = getTotalPrice();
 
@@ -68,7 +82,7 @@ export default function CheckoutPage() {
     try {
       // 1. Tạo đơn mới trực tiếp vào PostgreSQL
       const order = await createOrderApi({
-        userId: DEMO_BACKEND_USER_ID,
+        userId: user.id,
         items,
       });
 

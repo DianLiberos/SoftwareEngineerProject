@@ -14,6 +14,8 @@ enum OrderStatus {
   PREPARING
   READY
   COMPLETED
+  CANCELLED
+  PAYMENT_FAILED
 }
 
 enum PaymentMethod {

@@ -9,7 +9,12 @@ import { PrismaService } from "../prisma/prisma.service";
 import { CreateOrderDto } from "./order.dto";
 
 const allowedTransitions: Partial<Record<OrderStatus, OrderStatus[]>> = {
-  [OrderStatus.PAID]: [OrderStatus.PREPARING],
+  [OrderStatus.PENDING]: [
+    OrderStatus.PAID,
+    OrderStatus.CANCELLED,
+    OrderStatus.PAYMENT_FAILED,
+  ],
+  [OrderStatus.PAID]: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
   [OrderStatus.PREPARING]: [OrderStatus.READY],
   [OrderStatus.READY]: [OrderStatus.COMPLETED],
 };
@@ -65,21 +70,23 @@ export class OrdersService {
               }
 
               const quantity = item.quantity ?? 1;
-              const selectedSize = item.size
-                ? product.sizes.find((size) => size.name === item.size?.name)
+              const requestedSizeName = item.size?.name || item.sizeName;
+              const selectedSize = requestedSizeName
+                ? product.sizes.find((size) => size.name === requestedSizeName)
                 : undefined;
-              if (item.size && !selectedSize) {
+              if (requestedSizeName && !selectedSize) {
                 throw new BadRequestException(
-                  `Size ${item.size.name} is not available for ${product.name}`,
+                  `Size ${requestedSizeName} is not available for ${product.name}`,
                 );
               }
-              const selectedToppings = (item.toppings ?? []).map((topping) => {
+              const selectedToppings = (item.toppings ?? []).map((topping: any) => {
+                const toppingName = typeof topping === "string" ? topping : topping?.name;
                 const option = product.toppings.find(
-                  (available) => available.name === topping.name,
+                  (available) => available.name === toppingName,
                 );
                 if (!option) {
                   throw new BadRequestException(
-                    `Topping ${topping.name} is not available for ${product.name}`,
+                    `Topping ${toppingName} is not available for ${product.name}`,
                   );
                 }
                 return { name: option.name, price: option.price };
@@ -245,7 +252,71 @@ export class OrdersService {
     });
   }
 
+  async cancelOrder(id: string, reason?: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+    if (!order) {
+      throw new NotFoundException("Order not found");
+    }
+    if (
+      order.status !== OrderStatus.PENDING &&
+      order.status !== OrderStatus.PAID
+    ) {
+      throw new ConflictException(
+        `Không thể hủy đơn hàng ở trạng thái ${order.status}`,
+      );
+    }
+
+    return await this.prisma.$transaction(
+      async (tx) => {
+        // 1. Cập nhật trạng thái đơn hàng sang CANCELLED
+        const updated = await tx.order.updateMany({
+          where: { id: order.id, status: order.status },
+          data: { status: OrderStatus.CANCELLED },
+        });
+        if (updated.count !== 1) {
+          throw new ConflictException("Đơn hàng đã bị thay đổi đồng thời");
+        }
+
+        // 2. Hoàn lại tồn kho cho từng món (Stock Rollback)
+        for (const item of order.items) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: {
+              stock: { increment: item.quantity },
+              stockVersion: { increment: 1 },
+            },
+          });
+        }
+
+        // 3. Nếu đơn có dùng coupon thì hoàn lại lượt sử dụng coupon
+        if (order.couponCode) {
+          const redemption = await tx.couponRedemption.findUnique({
+            where: { orderId: order.id },
+          });
+          if (redemption) {
+            await tx.couponRedemption.delete({
+              where: { orderId: order.id },
+            });
+          }
+        }
+
+        return tx.order.findUnique({
+          where: { id },
+          include: { items: true, payment: true },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  }
+
   async transition(id: string, nextStatus: OrderStatus) {
+    if (nextStatus === OrderStatus.CANCELLED) {
+      return this.cancelOrder(id);
+    }
+
     const order = await this.prisma.order.findUnique({ where: { id } });
     if (!order) {
       throw new NotFoundException("Order not found");
