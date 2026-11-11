@@ -7,10 +7,12 @@ import { PaymentsService } from "./payments/payments.service";
 import { PrismaModule } from "./prisma/prisma.module";
 import { ProductsModule } from './products/products.module'; 
 import { AuthModule } from './auth/auth.module';
+import { CouponsModule } from './coupons/coupons.module';
 
 @Module({
-  imports: [PrismaModule, ProductsModule, AuthModule],
+  imports: [PrismaModule, ProductsModule, AuthModule, CouponsModule],
   controllers: [OrdersController, PaymentsController, LoyaltyController],
   providers: [OrdersService, PaymentsService],
 })
 export class AppModule {}
+  

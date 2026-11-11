@@ -139,6 +139,16 @@ export class OrdersService {
               if (!coupon) {
                 throw new BadRequestException("Coupon code is invalid");
               }
+              if (dto.userId) {
+                const used = await tx.couponRedemption.findUnique({
+                  where: {
+                    couponId_userId: { couponId: coupon.id, userId: dto.userId },
+                  },
+                });
+                if (used) {
+                  throw new BadRequestException("Bạn đã sử dụng mã giảm giá này rồi");
+                }
+              }
               const now = new Date();
               if (
                 (coupon.activeFrom && coupon.activeFrom > now) ||
@@ -224,6 +234,20 @@ export class OrdersService {
       }
     }
     throw new ConflictException("Could not reserve inventory; please retry");
+  }
+
+  async findAll(status?: OrderStatus) {
+    return this.prisma.order.findMany({
+      where: status ? { status } : undefined,
+      include: {
+        items: true,
+        payment: true,
+        user: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
   }
 
   async findOne(id: string) {

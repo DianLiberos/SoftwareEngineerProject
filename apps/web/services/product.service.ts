@@ -17,7 +17,11 @@ const mapProductFromApi = (p: any): Product => {
     price: unitPrice,       
     basePrice: unitPrice,  
     stock: Number(p.stock || 0),
-    imageUrl: p.imageUrl || "/next.svg",
+    imageUrl: p.imageUrl
+      ? p.imageUrl.startsWith("http") || p.imageUrl.startsWith("/")
+        ? p.imageUrl
+        : `/images/${p.imageUrl}`
+      : "/next.svg",
     isActive: p.isActive !== undefined ? Boolean(p.isActive) : true,
 
     sizes: (p.sizes || []).map((s: any) => {

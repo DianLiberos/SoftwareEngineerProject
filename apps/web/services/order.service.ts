@@ -162,3 +162,95 @@ export const cancelOrderApi = async (
 
   return res.json();
 };
+
+// Kiểm tra tính hợp lệ của mã giảm giá: POST /coupons/validate
+export interface ValidateCouponResult {
+  valid: boolean;
+  code: string;
+  discountType: "PERCENTAGE" | "FIXED";
+  value: number;
+  discountAmount: number;
+  finalTotal: number;
+  message: string;
+}
+
+export const validateCouponApi = async (
+  code: string,
+  orderAmount: number,
+  userId?: string
+): Promise<ValidateCouponResult> => {
+  const API_URL = getApiUrl();
+  const res = await fetch(`${API_URL}/coupons/validate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      code: code.trim().toUpperCase(),
+      orderAmount,
+      userId,
+    }),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Mã giảm giá không hợp lệ");
+  }
+
+  return res.json();
+};
+
+// Lấy toàn bộ đơn hàng cho Barista / Thu ngân: GET /orders
+export const getAllOrdersApi = async (status?: string): Promise<any[]> => {
+  try {
+    const API_URL = getApiUrl();
+    const token = useAuthStore.getState().token;
+    const query = status ? `?status=${encodeURIComponent(status)}` : "";
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(`${API_URL}/orders${query}`, {
+      method: "GET",
+      headers,
+      cache: "no-store",
+    });
+
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (error) {
+    console.error("Lỗi khi tải danh sách đơn hàng Barista:", error);
+    return [];
+  }
+};
+
+// Cập nhật trạng thái đơn hàng (PAID -> PREPARING -> READY -> COMPLETED): PATCH /orders/:id/status
+export const updateOrderStatusApi = async (
+  orderId: string,
+  status: OrderStatus | string
+): Promise<any> => {
+  const API_URL = getApiUrl();
+  const token = useAuthStore.getState().token;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_URL}/orders/${orderId}/status`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ status }),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Không thể cập nhật trạng thái đơn hàng");
+  }
+
+  return res.json();
+};

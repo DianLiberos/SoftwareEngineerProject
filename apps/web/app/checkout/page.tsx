@@ -8,6 +8,7 @@ import { useCartStore } from "@/store/useCartStore";
 import {
   createOrderApi,
   processPaymentApi,
+  validateCouponApi,
 } from "@/services/order.service";
 import { useAuthStore } from "@/store/useAuthStore";
 
@@ -30,6 +31,17 @@ export default function CheckoutPage() {
   const [method, setMethod] = useState<PaymentMethod>("WALLET");
   const [isProcessing, setIsProcessing] = useState(false);
   const isSubmitting = useRef(false);
+
+  // State mã giảm giá (Coupon)
+  const [couponCodeInput, setCouponCodeInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    discountAmount: number;
+    finalTotal: number;
+    message: string;
+  } | null>(null);
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  const [couponError, setCouponError] = useState("");
 
   const [completedOrder, setCompletedOrder] = useState<{
     orderId: string;
@@ -54,7 +66,9 @@ export default function CheckoutPage() {
     );
   }
 
-  const totalPrice = getTotalPrice();
+  const subtotal = getTotalPrice();
+  const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
+  const finalPrice = Math.max(0, subtotal - discountAmount);
 
   // Kiểm tra giỏ hàng rỗng
   if (items.length === 0 && !completedOrder) {
@@ -72,6 +86,41 @@ export default function CheckoutPage() {
     );
   }
 
+  // Xử lý áp dụng mã giảm giá
+  const handleApplyCoupon = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!couponCodeInput.trim()) return;
+
+    setIsValidatingCoupon(true);
+    setCouponError("");
+
+    try {
+      const res = await validateCouponApi(
+        couponCodeInput.trim(),
+        subtotal,
+        user.id
+      );
+      setAppliedCoupon({
+        code: res.code,
+        discountAmount: res.discountAmount,
+        finalTotal: res.finalTotal,
+        message: res.message,
+      });
+      setCouponError("");
+    } catch (err: any) {
+      setCouponError(err.message || "Mã giảm giá không hợp lệ");
+      setAppliedCoupon(null);
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCodeInput("");
+    setCouponError("");
+  };
+
   // Xử lý tạo đơn và thanh toán
   const handlePayment = async () => {
     // Chặn tuyệt đối nếu đang trong tiến trình xử lý (chống bấm đúp trên điện thoại)
@@ -80,10 +129,11 @@ export default function CheckoutPage() {
     setIsProcessing(true);
 
     try {
-      // 1. Tạo đơn mới trực tiếp vào PostgreSQL
+      // 1. Tạo đơn mới trực tiếp vào PostgreSQL (kèm mã giảm giá nếu có)
       const order = await createOrderApi({
         userId: user.id,
         items,
+        couponCode: appliedCoupon?.code,
       });
 
       // 2. Thanh toán đơn vừa tạo bằng mã đơn duy nhất
@@ -174,16 +224,82 @@ export default function CheckoutPage() {
       </header>
 
       <main className="max-w-md mx-auto px-6 pt-6 space-y-6">
-        <section className="bg-neutral-800/50 border border-neutral-800 rounded-2xl p-5 flex items-center justify-between">
-          <div>
+        {/* Hộp tổng tiền & Chi tiết chiết khấu */}
+        <section className="bg-neutral-800/50 border border-neutral-800 rounded-2xl p-5 space-y-2.5">
+          <div className="flex items-center justify-between text-xs text-neutral-400">
+            <span>Tạm tính ({items.length} món)</span>
+            <span className="font-semibold text-neutral-300">
+              {subtotal.toLocaleString("vi-VN")} đ
+            </span>
+          </div>
+
+          {appliedCoupon && (
+            <div className="flex items-center justify-between text-xs text-emerald-400 font-medium">
+              <span>Ưu đãi voucher ({appliedCoupon.code})</span>
+              <span>-{discountAmount.toLocaleString("vi-VN")} đ</span>
+            </div>
+          )}
+
+          <div className="pt-2 border-t border-neutral-700/60 flex items-center justify-between">
             <span className="text-xs text-neutral-400 font-medium">Tổng tiền thanh toán</span>
-            <p className="text-2xl font-extrabold text-amber-400 mt-0.5">
-              {totalPrice.toLocaleString("vi-VN")} đ
+            <p className="text-2xl font-extrabold text-amber-400">
+              {finalPrice.toLocaleString("vi-VN")} đ
             </p>
           </div>
-          <span className="text-xs bg-amber-500/10 text-amber-400 px-2.5 py-1 rounded-full font-medium border border-amber-500/20">
-            {items.length} món
-          </span>
+        </section>
+
+        {/* Khối nhập mã ưu đãi (Coupon) */}
+        <section className="bg-neutral-800/40 border border-neutral-800 rounded-2xl p-4.5 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-neutral-200 flex items-center gap-1.5">
+              <span>🎟️</span> Mã giảm giá / Voucher
+            </h2>
+            {appliedCoupon && (
+              <span className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-medium">
+                Đã áp dụng
+              </span>
+            )}
+          </div>
+
+          {appliedCoupon ? (
+            <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 text-xs text-emerald-400">
+              <div className="space-y-0.5">
+                <p className="font-bold font-mono tracking-wide">
+                  {appliedCoupon.code}: -{appliedCoupon.discountAmount.toLocaleString("vi-VN")} đ
+                </p>
+                <p className="text-neutral-400 text-[11px]">{appliedCoupon.message}</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleRemoveCoupon}
+                className="text-xs text-rose-400 hover:text-rose-300 font-semibold px-2 py-1 bg-rose-500/10 rounded-lg transition active:scale-95"
+              >
+                Gỡ mã
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleApplyCoupon} className="space-y-2">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={couponCodeInput}
+                  onChange={(e) => setCouponCodeInput(e.target.value.toUpperCase())}
+                  placeholder="Nhập mã (ví dụ: BREW10)"
+                  className="flex-1 bg-neutral-900 border border-neutral-700/80 rounded-xl px-3.5 py-2.5 text-xs text-white uppercase font-mono tracking-wider focus:outline-none focus:border-amber-500 transition"
+                />
+                <button
+                  type="submit"
+                  disabled={isValidatingCoupon || !couponCodeInput.trim()}
+                  className="bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-neutral-950 font-bold px-4 py-2.5 rounded-xl text-xs transition active:scale-95 shrink-0"
+                >
+                  {isValidatingCoupon ? "Kiểm tra..." : "Áp dụng"}
+                </button>
+              </div>
+              {couponError && (
+                <p className="text-rose-400 text-xs mt-1">{couponError}</p>
+              )}
+            </form>
+          )}
         </section>
 
         <section>
@@ -281,7 +397,7 @@ export default function CheckoutPage() {
               <span>Đang xử lý đơn hàng...</span>
             </>
           ) : (
-            <span>Xác nhận trả ({totalPrice.toLocaleString("vi-VN")} đ)</span>
+            <span>Xác nhận trả ({finalPrice.toLocaleString("vi-VN")} đ)</span>
           )}
         </button>
       </div>

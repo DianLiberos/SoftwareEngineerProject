@@ -77,6 +77,7 @@ export default function ProfilePage() {
 
   const avatarLetter = (user?.name?.trim()?.charAt(0) || "U").toUpperCase();
   const points = user.loyaltyPoints ?? 0;
+  const isStaff = user?.role === "BARISTA" || user?.role === "ADMIN";
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 pb-20">
@@ -109,8 +110,23 @@ export default function ProfilePage() {
             <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-400 flex items-center justify-center text-2xl font-black shrink-0">
               {avatarLetter}
             </div>
-            <div className="min-w-0">
-              <h2 className="text-xl font-bold text-white truncate">{user.name || "Khách hàng"}</h2>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold text-white truncate">{user.name || "Khách hàng"}</h2>
+                {user.role && (
+                  <span
+                    className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                      user.role === "ADMIN"
+                        ? "bg-purple-500/10 border-purple-500/30 text-purple-400"
+                        : user.role === "BARISTA"
+                        ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                        : "bg-neutral-800 border-neutral-700 text-neutral-400"
+                    }`}
+                  >
+                    {user.role}
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-neutral-400 mt-0.5 truncate">{user.email}</p>
               <div className="inline-flex items-center gap-1.5 mt-2 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-md text-xs font-semibold text-amber-400">
                 <span>⭐ {points.toLocaleString("vi-VN")} điểm thưởng</span>
@@ -118,6 +134,25 @@ export default function ProfilePage() {
             </div>
           </div>
         </section>
+
+        {/* Lối tắt sang Màn hình Barista KDS: Chỉ hiển thị cho BARISTA hoặc ADMIN */}
+        {isStaff && (
+          <div className="bg-neutral-900 border border-amber-500/30 rounded-2xl p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">☕</span>
+              <div>
+                <p className="text-sm font-semibold text-white">Màn hình Barista (KDS)</p>
+                <p className="text-xs text-neutral-400">Dành cho nhân viên quầy nhận đơn & pha chế</p>
+              </div>
+            </div>
+            <Link
+              href="/barista"
+              className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-neutral-950 rounded-xl text-xs font-bold transition active:scale-95"
+            >
+              Mở KDS &rarr;
+            </Link>
+          </div>
+        )}
 
         {/* Lịch sử đơn hàng từ PostgreSQL */}
         <section>
