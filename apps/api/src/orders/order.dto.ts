@@ -46,6 +46,10 @@ export class OrderItemDto {
   name?: string;
 
   @IsOptional()
+  @IsString()
+  sizeName?: string;
+
+  @IsOptional()
   @IsNumber()
   basePrice?: number;
 
@@ -64,9 +68,7 @@ export class OrderItemDto {
 
   @IsOptional()
   @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => ProductOptionDto)
-  toppings?: ProductOptionDto[];
+  toppings?: any[];
 }
 
 export class CreateOrderDto {
@@ -88,4 +90,10 @@ export class CreateOrderDto {
 export class UpdateOrderStatusDto {
   @IsEnum(OrderStatus)
   status!: OrderStatus;
+}
+
+export class CancelOrderDto {
+  @IsOptional()
+  @IsString()
+  reason?: string;
 }

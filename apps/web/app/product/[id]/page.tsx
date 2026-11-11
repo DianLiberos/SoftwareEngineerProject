@@ -80,13 +80,17 @@ function ProductDetailContent() {
   };
 
   const productPrice = Number(product.price ?? product.basePrice ?? 0);
+  const stock = Number(product.stock ?? 0);
+  const isOutOfStock = stock <= 0;
+  const isLowStock = stock >= 1 && stock <= 5;
+
   const sizePrice = Number(selectedSize?.price || 0);
   const toppingsPrice = selectedToppings.reduce((sum, t) => sum + Number(t.price || 0), 0);
   const unitPrice = productPrice + sizePrice + toppingsPrice;
   const totalPrice = unitPrice * quantity;
 
   const handleAddToCart = () => {
-    if (!selectedSize) return;
+    if (isOutOfStock || !selectedSize) return;
 
     addItem({
       productId: product.id,
@@ -114,7 +118,7 @@ function ProductDetailContent() {
           </svg>
         </button>
 
-        <span className="font-semibold text-sm text-neutral-300">Tùy chỉnh món</span>
+        <span className="font-semibold text-sm text-neutral-300">Tùy chọn món</span>
 
         <Link
           href="/cart"
@@ -153,13 +157,26 @@ function ProductDetailContent() {
         </div>
 
         <div className="mt-5">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-white">{product.name}</h1>
-            <span className="text-lg font-bold text-amber-500">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl font-bold text-white">{product.name}</h1>
+              {isOutOfStock && (
+                <span className="bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs px-2.5 py-0.5 rounded-full font-bold">
+                  Hết món
+                </span>
+              )}
+            </div>
+            <span className="text-lg font-bold text-amber-500 shrink-0">
               {productPrice.toLocaleString("vi-VN")} đ
             </span>
           </div>
-          <p className="text-xs text-neutral-400 mt-1">Còn lại: {product.stock} phần trong kho</p>
+
+          {/* Cảnh báo nhẹ khi sắp hết hàng (FOMO) */}
+          {isLowStock && (
+            <p className="text-xs text-amber-400 font-medium mt-1.5 flex items-center gap-1">
+              <span>⚡ Chỉ còn {stock} phần cuối hôm nay</span>
+            </p>
+          )}
         </div>
 
         <hr className="border-neutral-800 my-6" />
@@ -169,7 +186,6 @@ function ProductDetailContent() {
           <section className="mb-6">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-white text-sm">Chọn kích cỡ (Size)</h2>
-              <span className="text-xs text-amber-500/80 font-medium bg-amber-500/10 px-2 py-0.5 rounded">Bắt buộc</span>
             </div>
 
             <div className="grid grid-cols-3 gap-3">
@@ -245,19 +261,21 @@ function ProductDetailContent() {
         )}
 
         {/* Tăng / giảm số lượng ly */}
-        <section className="flex items-center justify-between p-4 bg-neutral-800/40 border border-neutral-800 rounded-2xl">
+        <section className={`flex items-center justify-between p-4 bg-neutral-800/40 border border-neutral-800 rounded-2xl ${isOutOfStock ? "opacity-40 pointer-events-none" : ""}`}>
           <span className="font-semibold text-sm text-neutral-200">Số lượng ly</span>
           <div className="flex items-center gap-3 bg-neutral-900 border border-neutral-700/60 rounded-xl p-1">
             <button
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="w-8 h-8 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white flex items-center justify-center transition active:scale-90"
+              disabled={isOutOfStock || quantity <= 1}
+              className="w-8 h-8 rounded-lg bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 text-white flex items-center justify-center transition active:scale-90"
             >
               -
             </button>
-            <span className="w-8 text-center font-bold text-white text-sm">{quantity}</span>
+            <span className="w-8 text-center font-bold text-white text-sm">{isOutOfStock ? 0 : quantity}</span>
             <button
               onClick={() => setQuantity(quantity + 1)}
-              className="w-8 h-8 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white flex items-center justify-center transition active:scale-90"
+              disabled={isOutOfStock || (stock > 0 && quantity >= stock)}
+              className="w-8 h-8 rounded-lg bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 text-white flex items-center justify-center transition active:scale-90"
             >
               +
             </button>
@@ -269,14 +287,19 @@ function ProductDetailContent() {
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-neutral-950 via-neutral-950/90 to-transparent flex justify-center z-20">
         <button
           onClick={handleAddToCart}
-          className={`w-full max-w-xl py-4 px-6 rounded-2xl font-bold flex items-center justify-between transition shadow-xl active:scale-98 ${
-            isAdded
-              ? "bg-emerald-500 text-neutral-950 shadow-emerald-500/20"
-              : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/40"
+          disabled={isOutOfStock || isAdded}
+          className={`w-full max-w-xl py-4 px-6 rounded-2xl font-bold flex items-center justify-between transition shadow-xl ${
+            isOutOfStock
+              ? "bg-neutral-800 text-neutral-500 border border-neutral-700/60 cursor-not-allowed opacity-60 shadow-none"
+              : isAdded
+              ? "bg-emerald-500 text-neutral-950 shadow-emerald-500/20 active:scale-98"
+              : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/40 active:scale-98"
           }`}
         >
           <div className="flex items-center gap-2">
-            {isAdded ? (
+            {isOutOfStock ? (
+              <span>Hết món</span>
+            ) : isAdded ? (
               <>
                 <svg className="w-5 h-5 text-neutral-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -289,7 +312,7 @@ function ProductDetailContent() {
           </div>
 
           <span className="text-base font-extrabold tracking-tight">
-            {totalPrice.toLocaleString("vi-VN")} đ
+            {isOutOfStock ? "0 đ" : `${totalPrice.toLocaleString("vi-VN")} đ`}
           </span>
         </button>
       </div>

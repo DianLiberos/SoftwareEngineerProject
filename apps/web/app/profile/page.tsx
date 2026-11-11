@@ -4,17 +4,41 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/useAuthStore";
-import { getMyOrdersApi } from "@/services/order.service";
+import { cancelOrderApi, getMyOrdersApi } from "@/services/order.service";
 
 export default function ProfilePage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const logout = useAuthStore((state) => state.logout);
+
+  const handleCancelOrder = async (orderId: string) => {
+    if (
+      !confirm(
+        "Bạn có chắc chắn muốn hủy đơn hàng này không? Số lượng thức uống sẽ được hoàn trả lại vào kho."
+      )
+    ) {
+      return;
+    }
+
+    setCancellingId(orderId);
+    try {
+      await cancelOrderApi(orderId);
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status: "CANCELLED" } : o))
+      );
+      alert("Đã hủy đơn hàng thành công và hoàn trả tồn kho!");
+    } catch (err: any) {
+      alert(err.message || "Không thể hủy đơn hàng này");
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -140,6 +164,14 @@ export default function ProfilePage() {
                           ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
                           : ord.status === "PENDING"
                           ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                          : ord.status === "PREPARING"
+                          ? "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                          : ord.status === "READY"
+                          ? "bg-teal-500/10 border-teal-500/20 text-teal-400"
+                          : ord.status === "COMPLETED"
+                          ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                          : ord.status === "CANCELLED" || ord.status === "PAYMENT_FAILED"
+                          ? "bg-rose-500/10 border-rose-500/20 text-rose-400"
                           : "bg-neutral-800 border-neutral-700 text-neutral-300"
                       }`}
                     >
@@ -172,10 +204,22 @@ export default function ProfilePage() {
                   </div>
 
                   <div className="flex justify-between items-center pt-2.5 border-t border-neutral-800 text-xs">
-                    <span className="text-neutral-400">Tổng thanh toán</span>
-                    <span className="font-bold text-amber-400 text-sm font-mono">
-                      {(ord.total ?? ord.totalAmount ?? 0).toLocaleString("vi-VN")} đ
-                    </span>
+                    <div>
+                      <span className="text-neutral-400">Tổng thanh toán: </span>
+                      <span className="font-bold text-amber-400 text-sm font-mono">
+                        {(ord.total ?? ord.totalAmount ?? 0).toLocaleString("vi-VN")} đ
+                      </span>
+                    </div>
+
+                    {(ord.status === "PENDING" || ord.status === "PAID") && (
+                      <button
+                        onClick={() => handleCancelOrder(ord.id)}
+                        disabled={cancellingId === ord.id}
+                        className="px-3 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-xs font-semibold transition active:scale-95 disabled:opacity-50"
+                      >
+                        {cancellingId === ord.id ? "Đang hủy..." : "Hủy đơn"}
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
