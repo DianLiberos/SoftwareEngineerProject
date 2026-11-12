@@ -14,6 +14,10 @@ const allowedTransitions: Partial<Record<OrderStatus, OrderStatus[]>> = {
     OrderStatus.CANCELLED,
     OrderStatus.PAYMENT_FAILED,
   ],
+  [OrderStatus.PAYMENT_FAILED]: [
+    OrderStatus.PAID,
+    OrderStatus.CANCELLED,
+  ],
   [OrderStatus.PAID]: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
   [OrderStatus.PREPARING]: [OrderStatus.READY],
   [OrderStatus.READY]: [OrderStatus.COMPLETED],
@@ -319,7 +323,8 @@ export class OrdersService {
     }
     if (
       order.status !== OrderStatus.PENDING &&
-      order.status !== OrderStatus.PAID
+      order.status !== OrderStatus.PAID &&
+      order.status !== OrderStatus.PAYMENT_FAILED
     ) {
       throw new ConflictException(
         `Không thể hủy đơn hàng ở trạng thái ${order.status}`,

@@ -21,6 +21,8 @@ export class PaymentsService {
       return existing;
     }
 
+    const simulateFailure = Boolean(dto.simulateFailure);
+
     try {
       return await this.prisma.$transaction(
         async (tx) => {
@@ -28,24 +30,80 @@ export class PaymentsService {
           if (!order) {
             throw new NotFoundException("Order not found");
           }
-          if (order.status !== OrderStatus.PENDING) {
-            throw new ConflictException("Only pending orders can be paid");
+          if (
+            order.status !== OrderStatus.PENDING &&
+            order.status !== OrderStatus.PAYMENT_FAILED
+          ) {
+            throw new ConflictException(
+              "Chỉ có thể thanh toán cho đơn hàng đang chờ (PENDING) hoặc thanh toán lỗi (PAYMENT_FAILED)",
+            );
           }
 
+          if (simulateFailure) {
+            // Giả lập thanh toán thất bại
+            const updated = await tx.order.updateMany({
+              where: {
+                id: order.id,
+                status: { in: [OrderStatus.PENDING, OrderStatus.PAYMENT_FAILED] },
+              },
+              data: { status: OrderStatus.PAYMENT_FAILED },
+            });
+            if (updated.count !== 1) {
+              throw new ConflictException("Đơn hàng đã bị thay đổi đồng thời");
+            }
+
+            const payment = await tx.payment.upsert({
+              where: { orderId: order.id },
+              create: {
+                orderId: order.id,
+                idempotencyKey,
+                method: dto.method,
+                amount: order.total,
+                status: "FAILED",
+              },
+              update: {
+                idempotencyKey,
+                method: dto.method,
+                amount: order.total,
+                status: "FAILED",
+              },
+              include: { order: true },
+            });
+
+            // KHÔNG hoàn kho nguyên liệu ở bước này vì đơn vẫn giữ chỗ để khách thử lại
+            return {
+              ...payment,
+              status: "FAILED",
+              message: "Giao dịch bị từ chối: Số dư tài khoản không đủ hoặc thẻ bị khóa",
+            };
+          }
+
+          // Thanh toán thành công (simulateFailure === false)
           const updated = await tx.order.updateMany({
-            where: { id: order.id, status: OrderStatus.PENDING },
+            where: {
+              id: order.id,
+              status: { in: [OrderStatus.PENDING, OrderStatus.PAYMENT_FAILED] },
+            },
             data: { status: OrderStatus.PAID },
           });
           if (updated.count !== 1) {
             throw new ConflictException("Order was paid or changed concurrently");
           }
 
-          const payment = await tx.payment.create({
-            data: {
+          const payment = await tx.payment.upsert({
+            where: { orderId: order.id },
+            create: {
               orderId: order.id,
               idempotencyKey,
               method: dto.method,
               amount: order.total,
+              status: "SUCCEEDED",
+            },
+            update: {
+              idempotencyKey,
+              method: dto.method,
+              amount: order.total,
+              status: "SUCCEEDED",
             },
             include: { order: true },
           });
@@ -58,11 +116,16 @@ export class PaymentsService {
             if (!coupon) {
               throw new ConflictException("Coupon no longer exists");
             }
-            await tx.couponRedemption.create({
-              data: {
+            await tx.couponRedemption.upsert({
+              where: { orderId: order.id },
+              create: {
                 couponId: coupon.id,
                 userId: order.userId,
                 orderId: order.id,
+              },
+              update: {
+                couponId: coupon.id,
+                userId: order.userId,
               },
             });
           }
@@ -74,7 +137,11 @@ export class PaymentsService {
               data: { loyaltyPoints: { increment: points } },
             });
           }
-          return payment;
+          return {
+            ...payment,
+            status: "SUCCEEDED",
+            message: "Thanh toán thành công",
+          };
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
