@@ -1,4 +1,9 @@
-import { DiscountType, PrismaClient, Role } from "../src/generated/prisma/client";
+import {
+  DiscountType,
+  IngredientUnit,
+  PrismaClient,
+  Role,
+} from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import * as bcrypt from "bcrypt";
 
@@ -42,36 +47,62 @@ async function main() {
     },
   });
 
+  const ingredients = [
+    { id: "coffee", name: "Coffee", unit: IngredientUnit.GRAM, stockQuantity: 5000 },
+    { id: "milk", name: "Milk", unit: IngredientUnit.MILLILITER, stockQuantity: 20000 },
+    { id: "tea", name: "Tea", unit: IngredientUnit.GRAM, stockQuantity: 3000 },
+    {
+      id: "peach-tea",
+      name: "Peach tea",
+      unit: IngredientUnit.GRAM,
+      stockQuantity: 5000,
+    },
+  ];
+
+  for (const ingredient of ingredients) {
+    await prisma.ingredient.upsert({
+      where: { id: ingredient.id },
+      update: { name: ingredient.name, unit: ingredient.unit },
+      create: ingredient,
+    });
+  }
+  const ingredientIds = new Map(ingredients.map(({ id, name }) => [name, id]));
+
   const products = [
     {
       id: "1",
       name: "Cà phê sữa",
       price: 35000,
-      stock: 20,
       imageUrl: "/images/cafesua.jpeg",
       sizes: [
         { name: "M", price: 0 },
         { name: "L", price: 6000 },
       ],
       toppings: [],
+      recipes: [
+        { size: "M", ingredients: { Coffee: 18, Milk: 150 } },
+        { size: "L", ingredients: { Coffee: 24, Milk: 200 } },
+      ],
     },
     {
       id: "2",
       name: "Cà phê đen",
       price: 30000,
-      stock: 20,
       imageUrl: "/images/cafeden.jpeg",
       sizes: [
         { name: "M", price: 0 },
         { name: "L", price: 6000 },
       ],
       toppings: [],
+      recipes: [
+        { size: "M", ingredients: { Coffee: 18 } },
+        { size: "L", ingredients: { Coffee: 24 } },
+      ],
     },
     {
       id: "3",
       name: "Trà sữa",
       price: 38000,
-      stock: 20,
       imageUrl: "/images/trasua.png",
       sizes: [
         { name: "M", price: 0 },
@@ -81,18 +112,25 @@ async function main() {
         { name: "Thạch", price: 8000 },
         { name: "Trân châu", price: 8000 },
       ],
+      recipes: [
+        { size: "M", ingredients: { Tea: 8, Milk: 150 } },
+        { size: "L", ingredients: { Tea: 10, Milk: 200 } },
+      ],
     },
     {
       id: "4",
       name: "Trà đào",
       price: 39000,
-      stock: 25,
       imageUrl: "/images/tradao.jpeg",
       sizes: [
         { name: "M", price: 0 },
         { name: "L", price: 6000 },
       ],
       toppings: [{ name: "Miếng đào", price: 10000 }],
+      recipes: [
+        { size: "M", ingredients: { Tea: 8, "Peach tea": 20 } },
+        { size: "L", ingredients: { Tea: 10, "Peach tea": 25 } },
+      ],
     },
   ];
 
@@ -102,18 +140,19 @@ async function main() {
       update: {
         name: product.name,
         price: product.price,
-        stock: product.stock,
         imageUrl: product.imageUrl,
       },
       create: {
         id: product.id,
         name: product.name,
         price: product.price,
-        stock: product.stock,
         imageUrl: product.imageUrl,
       },
     });
 
+    await prisma.productRecipe.deleteMany({
+      where: { productSize: { productId: product.id } },
+    });
     await prisma.productSize.deleteMany({ where: { productId: product.id } });
     await prisma.productTopping.deleteMany({ where: { productId: product.id } });
 
@@ -129,6 +168,27 @@ async function main() {
         })),
       });
     }
+
+    const savedSizes = await prisma.productSize.findMany({
+      where: { productId: product.id },
+      select: { id: true, name: true },
+    });
+    const sizeIds = new Map(savedSizes.map((size) => [size.name, size.id]));
+    await prisma.productRecipe.createMany({
+      data: product.recipes.flatMap(({ size, ingredients: recipe }) => {
+        const productSizeId = sizeIds.get(size);
+        if (!productSizeId) {
+          throw new Error(`Missing ${size} size for ${product.name}`);
+        }
+        return Object.entries(recipe).map(([ingredientName, quantity]) => {
+          const ingredientId = ingredientIds.get(ingredientName);
+          if (!ingredientId) {
+            throw new Error(`Unknown recipe ingredient: ${ingredientName}`);
+          }
+          return { productSizeId, ingredientId, quantity };
+        });
+      }),
+    });
   }
 
   await prisma.coupon.upsert({

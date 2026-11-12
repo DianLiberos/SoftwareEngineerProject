@@ -15,8 +15,17 @@ With Prisma 7, the PostgreSQL connection URL is configured in
 driver adapter, and the Prisma Client is generated automatically by the build
 and start scripts.
 
-The seed creates demo user `user-demo-01`, four menu products, and the `BREW10` coupon. Database stock and prices are authoritative; order creation accepts product IDs and quantities,
-not client-submitted prices.
+The seed creates demo user `user-demo-01`, four menu products, ingredient
+inventory, product-size recipes, and the `BREW10` coupon. Product stock is
+derived from its size recipes; ingredient stock and prices in the database are
+authoritative.
+
+Inventory is tracked in whole grams or milliliters. Seed recipes use estimated
+per-size quantities (for example, 18 g coffee for a medium coffee and 150 ml
+milk for a medium milk coffee); replace these estimates with your actual recipes
+and starting ingredient quantities before production. Orders reserve recipe
+ingredients atomically, and cancellations restore the exact ingredient usage
+stored on each order item.
 
 ## Endpoints
 
