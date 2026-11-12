@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { OrderStatus, Role } from "../generated/prisma/client";
 import { CancelOrderDto, CreateOrderDto, UpdateOrderStatusDto } from "./order.dto";
 import { OrdersService } from "./orders.service";
@@ -20,6 +20,12 @@ export class OrdersController {
   @Roles(Role.BARISTA, Role.ADMIN)
   findAll(@Query("status") status?: OrderStatus) {
     return this.ordersService.findAll(status);
+  }
+
+  @Get("me")
+  @UseGuards(JwtAuthGuard)
+  findMyOrders(@Req() req: any) {
+    return this.ordersService.findByUser(req.user.id);
   }
 
   @Get("user/:userId")

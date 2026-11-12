@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { HealthController } from "./health/health.controller";
 import { LoyaltyController } from "./loyalty/loyalty.controller";
 import { OrdersController } from "./orders/orders.controller";
 import { OrdersService } from "./orders/orders.service";
@@ -11,7 +12,12 @@ import { CouponsModule } from './coupons/coupons.module';
 
 @Module({
   imports: [PrismaModule, ProductsModule, AuthModule, CouponsModule],
-  controllers: [OrdersController, PaymentsController, LoyaltyController],
+  controllers: [
+    HealthController,
+    OrdersController,
+    PaymentsController,
+    LoyaltyController,
+  ],
   providers: [OrdersService, PaymentsService],
 })
 export class AppModule {}
