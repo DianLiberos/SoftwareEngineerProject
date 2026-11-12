@@ -7,13 +7,18 @@ export class ProductsService {
 
   // Lấy toàn bộ món nước từ database kèm size và topping
   async findAll() {
-    return this.prisma.product.findMany({
+    const products = await this.prisma.product.findMany({
       include: {
-        sizes: true,
+        sizes: {
+          include: {
+            recipe: { include: { ingredient: true } },
+          },
+        },
         toppings: true,
       },
       orderBy: { createdAt: 'asc' },
     });
+    return products.map((product) => this.withAvailableStock(product));
   }
 
   // Lấy chi tiết 1 món theo ID
@@ -21,7 +26,11 @@ export class ProductsService {
     const product = await this.prisma.product.findUnique({
       where: { id },
       include: {
-        sizes: true,
+        sizes: {
+          include: {
+            recipe: { include: { ingredient: true } },
+          },
+        },
         toppings: true,
       },
     });
@@ -30,6 +39,38 @@ export class ProductsService {
       throw new NotFoundException(`Không tìm thấy sản phẩm với mã: ${id}`);
     }
 
-    return product;
+    return this.withAvailableStock(product);
+  }
+
+  private withAvailableStock<
+    T extends {
+      sizes: {
+        recipe: {
+          quantity: number;
+          ingredient: { stockQuantity: number };
+        }[];
+      }[];
+    },
+  >(product: T) {
+    const sizes = product.sizes.map((size) => {
+      const availableQuantity =
+        size.recipe.length === 0
+          ? 0
+          : Math.min(
+              ...size.recipe.map((recipe) =>
+                Math.floor(
+                  recipe.ingredient.stockQuantity / recipe.quantity,
+                ),
+              ),
+            );
+      const { recipe: _recipe, ...sizeWithoutRecipe } = size;
+      return { ...sizeWithoutRecipe, stock: availableQuantity };
+    });
+
+    return {
+      ...product,
+      sizes,
+      stock: sizes.length ? Math.max(...sizes.map((size) => size.stock)) : 0,
+    };
   }
 }
