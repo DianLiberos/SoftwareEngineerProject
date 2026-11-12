@@ -27,6 +27,7 @@ export interface PaymentPayload {
   method: "WALLET" | "BANK_CARD";
   idempotencyKey?: string;
   amount?: number;
+  simulateFailure?: boolean;
 }
 
 // Hàm tạo đơn hàng
@@ -91,7 +92,7 @@ export const createOrder = createOrderApi;
 // Hàm xử lý thanh toán (Bảo vệ bằng Idempotency-Key chống trừ tiền kép)
 export const processPaymentApi = async (
   payload: PaymentPayload
-): Promise<{ orderId: string; status: OrderStatus }> => {
+): Promise<{ orderId: string; status: OrderStatus | string; message?: string }> => {
   const API_URL = getApiUrl();
   const idempotencyKey = payload.idempotencyKey || `pay-${payload.orderId}-${Date.now()}`;
 
@@ -104,6 +105,7 @@ export const processPaymentApi = async (
     body: JSON.stringify({
       orderId: payload.orderId,
       method: payload.method,
+      simulateFailure: Boolean(payload.simulateFailure),
     }),
   });
 
@@ -121,15 +123,23 @@ export const payOrder = processPaymentApi;
 export const getMyOrdersApi = async (userId?: string): Promise<Order[]> => {
   try {
     const API_URL = getApiUrl();
+    const token = useAuthStore.getState().token;
     const currentUserId = userId || useAuthStore.getState().user?.id;
 
     if (!currentUserId) return [];
 
-    const res = await fetch(`${API_URL}/orders/user/${currentUserId}`, {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const endpoint = token ? `${API_URL}/orders/me` : `${API_URL}/orders/user/${currentUserId}`;
+
+    const res = await fetch(endpoint, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
       cache: "no-store",
     });
 
