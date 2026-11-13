@@ -20,7 +20,12 @@ async function main() {
 
   await prisma.user.upsert({
     where: { id: "user-demo-01" },
-    update: {},
+    update: {
+      name: "BrewLite Demo",
+      email: "demo@brewlite.local",
+      password: defaultPassword,
+      role: Role.CUSTOMER,
+    },
     create: {
       id: "user-demo-01",
       name: "BrewLite Demo",

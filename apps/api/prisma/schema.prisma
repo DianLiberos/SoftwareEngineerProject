@@ -42,7 +42,7 @@ enum IngredientUnit {
 model User {
   id            String             @id @default(cuid())
   email         String             @unique
-  password      String             @default("$2b$10$EpRnTzVlqHNP0.fUbXUwSOyuiXe/QLSUG6x8ekEY5k7mGvitW0HKK") // Mật khẩu mặc định: 123456
+  password      String
   role          Role               @default(CUSTOMER)
   name          String
   loyaltyPoints Int                @default(0)

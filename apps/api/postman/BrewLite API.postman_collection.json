@@ -1,0 +1,626 @@
+{
+  "info": {
+    "_postman_id": "56e6239c-9b26-4efa-b4c7-f1f77b4424a0",
+    "name": "BrewLite API",
+    "description": "Integration tests for authentication, products, coupon validation, ingredient inventory, orders, payments, loyalty, and status transitions. Run the collection in order against a migrated and seeded development database.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3001" },
+    { "key": "customerEmail", "value": "demo@brewlite.local" },
+    { "key": "customerPassword", "value": "123456" },
+    { "key": "baristaEmail", "value": "barista@brewlite.local" },
+    { "key": "baristaPassword", "value": "123456" },
+    { "key": "productId", "value": "1" },
+    { "key": "sizeName", "value": "M" }
+  ],
+  "item": [
+    {
+      "name": "Setup and catalog",
+      "item": [
+        {
+          "name": "Login as seeded customer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('customer login succeeds', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "if (pm.response.code !== 201 || !body.accessToken || !body.user?.id) {",
+                  "  console.error('Customer login failed; stopping collection to prevent dependent requests from using an empty userId. Check seeded credentials and API database.');",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "  pm.test('response contains customer and token', () => {",
+                  "    pm.expect(body.accessToken).to.be.a('string').and.not.empty;",
+                  "    pm.expect(body.user.id).to.be.a('string').and.not.empty;",
+                  "  });",
+                  "  pm.collectionVariables.set('customerToken', body.accessToken);",
+                  "  pm.collectionVariables.set('userId', body.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as seeded barista",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{baristaEmail}}\",\n  \"password\": \"{{baristaPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('barista login succeeds', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "if (pm.response.code !== 201 || !body.accessToken || !body.user?.id) {",
+                  "  console.error('Barista login failed; stopping collection because order-state tests require the barista token. Reseed the database and rerun.');",
+                  "  pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "  pm.test('barista role is returned', () => pm.expect(body.user.role).to.eql('BARISTA'));",
+                  "  pm.collectionVariables.set('baristaToken', body.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List products and record coffee stock",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/products"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('products endpoint returns 200', () => pm.response.to.have.status(200));",
+                  "const products = pm.response.json();",
+                  "const product = products.find((entry) => String(entry.id) === pm.collectionVariables.get('productId'));",
+                  "pm.test('seeded coffee product has size availability', () => {",
+                  "  pm.expect(product).to.exist;",
+                  "  pm.expect(product.sizes.some((size) => size.name === pm.collectionVariables.get('sizeName'))).to.eql(true);",
+                  "  pm.expect(product.stock).to.be.a('number');",
+                  "});",
+                  "pm.collectionVariables.set('initialProductStock', String(product.stock));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read initial loyalty points",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/{{userId}}/loyalty"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('loyalty endpoint returns 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('loyalty response has the customer id and numeric points', () => {",
+                  "  pm.expect(body.id).to.eql(pm.collectionVariables.get('userId'));",
+                  "  pm.expect(body.loyaltyPoints).to.be.a('number');",
+                  "});",
+                  "pm.collectionVariables.set('initialLoyaltyPoints', String(body.loyaltyPoints));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validate seeded BREW10 coupon",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"BREW10\",\n  \"orderAmount\": 100000,\n  \"userId\": \"{{userId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/coupons/validate"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('coupon validates', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('coupon is valid and discounts the amount', () => {",
+                  "  pm.expect(body.valid).to.eql(true);",
+                  "  pm.expect(body.code).to.eql('BREW10');",
+                  "  pm.expect(body.discountAmount).to.be.greaterThan(0);",
+                  "  pm.expect(body.finalTotal).to.be.lessThan(100000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Order and inventory",
+      "item": [
+        {
+          "name": "Reject zero item quantity",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [{ \"productId\": \"{{productId}}\", \"qty\": 0, \"size\": { \"name\": \"{{sizeName}}\" } }]\n}"
+            },
+            "url": "{{baseUrl}}/orders"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('invalid quantity is rejected', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject order that exceeds ingredient stock",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [\n    { \"productId\": \"{{productId}}\", \"qty\": 99, \"size\": { \"name\": \"{{sizeName}}\" } },\n    { \"productId\": \"{{productId}}\", \"qty\": 99, \"size\": { \"name\": \"{{sizeName}}\" } },\n    { \"productId\": \"{{productId}}\", \"qty\": 99, \"size\": { \"name\": \"{{sizeName}}\" } }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/orders"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('insufficient ingredient inventory returns conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('response explains inventory conflict', () => pm.expect(pm.response.json().message).to.include('inventory'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create a pending two-drink order",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"qty\": 2,\n      \"size\": { \"name\": \"{{sizeName}}\", \"price\": 999999 },\n      \"toppings\": []\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/orders"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('order is created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('order begins pending and uses database price', () => {",
+                  "  pm.expect(body.status).to.eql('PENDING');",
+                  "  pm.expect(body.total).to.eql(70000);",
+                  "  pm.expect(body.items[0].quantity).to.eql(2);",
+                  "  pm.expect(body.items[0].ingredients).to.be.an('array').that.is.not.empty;",
+                  "  pm.expect(body.items[0].ingredients.some((ingredient) => ingredient.name === 'Coffee')).to.eql(true);",
+                  "});",
+                  "pm.collectionVariables.set('paidOrderId', body.id);",
+                  "pm.collectionVariables.set('paidOrderTotal', String(body.total));",
+                  "pm.collectionVariables.set('paymentKey', `postman-payment-${body.id}`);",
+                  "pm.collectionVariables.set('expectedPoints', String(Math.floor(body.total / 10000)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check recipe-based stock was reserved",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/products"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('product list returns 200', () => pm.response.to.have.status(200));",
+                  "const product = pm.response.json().find((entry) => String(entry.id) === pm.collectionVariables.get('productId'));",
+                  "const expectedStock = Number(pm.collectionVariables.get('initialProductStock')) - 2;",
+                  "pm.test('available product count decreases by ordered quantity', () => pm.expect(product.stock).to.eql(expectedStock));",
+                  "pm.collectionVariables.set('stockAfterPaidOrder', String(product.stock));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create an order with no matching recipe",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [{ \"productId\": \"{{productId}}\", \"qty\": 1, \"size\": { \"name\": \"NOT-A-SIZE\" } }]\n}"
+            },
+            "url": "{{baseUrl}}/orders"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('unavailable size is rejected', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel a pending order and restore ingredients",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [{ \"productId\": \"{{productId}}\", \"qty\": 1, \"size\": { \"name\": \"{{sizeName}}\" } }]\n}"
+            },
+            "url": "{{baseUrl}}/orders"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('cancellable order is created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('cancelOrderId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel order",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"reason\": \"Postman inventory test\" }"
+            },
+            "url": "{{baseUrl}}/orders/{{cancelOrderId}}/cancel"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('pending order cancellation succeeds', () => pm.response.to.have.status(200));",
+                  "pm.test('order is cancelled', () => pm.expect(pm.response.json().status).to.eql('CANCELLED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check cancellation restored available product count",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/products"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('product list returns 200', () => pm.response.to.have.status(200));",
+                  "const product = pm.response.json().find((entry) => String(entry.id) === pm.collectionVariables.get('productId'));",
+                  "pm.test('cancellation restores recipe-based stock', () => pm.expect(product.stock).to.eql(Number(pm.collectionVariables.get('stockAfterPaidOrder'))));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Payments, loyalty, and order states",
+      "item": [
+        {
+          "name": "Reject payment without Idempotency-Key",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{paidOrderId}}\",\n  \"method\": \"WALLET\"\n}"
+            },
+            "url": "{{baseUrl}}/payments"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('missing idempotency header is rejected', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pay pending order",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{paymentKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{paidOrderId}}\",\n  \"method\": \"WALLET\"\n}"
+            },
+            "url": "{{baseUrl}}/payments"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('payment succeeds', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('payment and related order are paid', () => {",
+                  "  pm.expect(body.orderId).to.eql(pm.collectionVariables.get('paidOrderId'));",
+                  "  pm.expect(body.amount).to.eql(Number(pm.collectionVariables.get('paidOrderTotal')));",
+                  "  pm.expect(body.order.status).to.eql('PAID');",
+                  "});",
+                  "pm.collectionVariables.set('paymentId', body.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Retry payment with same idempotency key",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{paymentKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{paidOrderId}}\",\n  \"method\": \"WALLET\"\n}"
+            },
+            "url": "{{baseUrl}}/payments"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('idempotent retry succeeds', () => pm.response.to.have.status(201));",
+                  "pm.test('retry returns the original payment', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('paymentId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject reused key with different payment request",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{paymentKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{paidOrderId}}\",\n  \"method\": \"BANK_CARD\"\n}"
+            },
+            "url": "{{baseUrl}}/payments"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('reusing key for a different request conflicts', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify loyalty points accrued",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/{{userId}}/loyalty"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('loyalty endpoint returns 200', () => pm.response.to.have.status(200));",
+                  "const expected = Number(pm.collectionVariables.get('initialLoyaltyPoints')) + Number(pm.collectionVariables.get('expectedPoints'));",
+                  "pm.test('points accrue once for the successful payment', () => pm.expect(pm.response.json().loyaltyPoints).to.eql(expected));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Move paid order to preparing",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{baristaToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"status\": \"PREPARING\" }"
+            },
+            "url": "{{baseUrl}}/orders/{{paidOrderId}}/status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('paid order can transition to preparing', () => pm.response.to.have.status(200));",
+                  "pm.test('status is PREPARING', () => pm.expect(pm.response.json().status).to.eql('PREPARING'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Move preparing order to ready",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{baristaToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"status\": \"READY\" }"
+            },
+            "url": "{{baseUrl}}/orders/{{paidOrderId}}/status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('preparing order can transition to ready', () => pm.response.to.have.status(200));",
+                  "pm.test('status is READY', () => pm.expect(pm.response.json().status).to.eql('READY'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Complete ready order",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{baristaToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"status\": \"COMPLETED\" }"
+            },
+            "url": "{{baseUrl}}/orders/{{paidOrderId}}/status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('ready order can complete', () => pm.response.to.have.status(200));",
+                  "pm.test('status is COMPLETED', () => pm.expect(pm.response.json().status).to.eql('COMPLETED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get customer order history",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/orders/user/{{userId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('order history returns 200', () => pm.response.to.have.status(200));",
+                  "pm.test('history includes the completed order', () => {",
+                  "  const order = pm.response.json().find((entry) => entry.id === pm.collectionVariables.get('paidOrderId'));",
+                  "  pm.expect(order).to.exist;",
+                  "  pm.expect(order.status).to.eql('COMPLETED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject barista order listing without token",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/orders"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('protected order listing rejects anonymous request', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
