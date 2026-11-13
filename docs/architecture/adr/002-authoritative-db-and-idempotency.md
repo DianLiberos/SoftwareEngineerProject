@@ -1,4 +1,3 @@
-cat << 'EOF' > docs/architecture/adr/002-authoritative-db-and-idempotency.md
 # ADR 002: Kiểm Soát Đơn Hàng Tập Trung Và Xử Lý Thanh Toán Lũy Đẳng
 
 ## Trạng thái

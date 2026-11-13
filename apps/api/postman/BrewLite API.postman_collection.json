@@ -1,28 +1,116 @@
 {
   "info": {
     "_postman_id": "56e6239c-9b26-4efa-b4c7-f1f77b4424a0",
-    "name": "BrewLite API",
-    "description": "Integration tests for authentication, products, coupon validation, ingredient inventory, orders, payments, loyalty, and status transitions. Run the collection in order against a migrated and seeded development database.",
+    "name": "BrewLite Automated Tests (Task 10 & Integration)",
+    "description": "Unified integration tests suite for BrewLite API: System Health, Auth & RBAC Security, Coupons, Recipe Inventory Reservation & Restocking, Idempotent Payments, Order State Machine Transitions, and Customer Order History.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:3001" },
-    { "key": "customerEmail", "value": "demo@brewlite.local" },
-    { "key": "customerPassword", "value": "123456" },
-    { "key": "baristaEmail", "value": "barista@brewlite.local" },
-    { "key": "baristaPassword", "value": "123456" },
-    { "key": "productId", "value": "1" },
-    { "key": "sizeName", "value": "M" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001"
+    },
+    {
+      "key": "customerEmail",
+      "value": "demo@brewlite.local"
+    },
+    {
+      "key": "customerPassword",
+      "value": "123456"
+    },
+    {
+      "key": "baristaEmail",
+      "value": "barista@brewlite.local"
+    },
+    {
+      "key": "baristaPassword",
+      "value": "123456"
+    },
+    {
+      "key": "productId",
+      "value": "1"
+    },
+    {
+      "key": "sizeName",
+      "value": "M"
+    },
+    {
+      "key": "customerToken",
+      "value": ""
+    },
+    {
+      "key": "baristaToken",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "paidOrderId",
+      "value": ""
+    },
+    {
+      "key": "cancelOrderId",
+      "value": ""
+    },
+    {
+      "key": "initialCoffeeStock",
+      "value": "0"
+    },
+    {
+      "key": "stockBeforeCancel",
+      "value": "0"
+    }
   ],
   "item": [
     {
-      "name": "Setup and catalog",
+      "name": "1. Setup, Health & Authentication",
       "item": [
+        {
+          "name": "Health check (System & Database Ping)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Health status is ok and database is connected', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('ok');",
+                  "    pm.expect(json.database).to.eql('connected');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
         {
           "name": "Login as seeded customer",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
@@ -57,7 +145,12 @@
           "name": "Login as seeded barista",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{baristaEmail}}\",\n  \"password\": \"{{baristaPassword}}\"\n}"
@@ -79,6 +172,58 @@
                   "  pm.test('barista role is returned', () => pm.expect(body.user.role).to.eql('BARISTA'));",
                   "  pm.collectionVariables.set('baristaToken', body.accessToken);",
                   "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "RBAC: Customer cannot update order status (403 Forbidden)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PREPARING\"\n}"
+            },
+            "url": "{{baseUrl}}/orders/rbac-guard-test/status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Customer calling barista status endpoint is blocked with 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject barista order listing without token",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/orders"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('protected order listing rejects anonymous request', () => pm.response.to.have.status(401));"
                 ]
               }
             }
@@ -138,7 +283,12 @@
           "name": "Validate seeded BREW10 coupon",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"code\": \"BREW10\",\n  \"orderAmount\": 100000,\n  \"userId\": \"{{userId}}\"\n}"
@@ -167,13 +317,18 @@
       ]
     },
     {
-      "name": "Order and inventory",
+      "name": "2. Order Validation & Recipe-Based Inventory",
       "item": [
         {
           "name": "Reject zero item quantity",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [{ \"productId\": \"{{productId}}\", \"qty\": 0, \"size\": { \"name\": \"{{sizeName}}\" } }]\n}"
@@ -196,7 +351,12 @@
           "name": "Reject order that exceeds ingredient stock",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [\n    { \"productId\": \"{{productId}}\", \"qty\": 99, \"size\": { \"name\": \"{{sizeName}}\" } },\n    { \"productId\": \"{{productId}}\", \"qty\": 99, \"size\": { \"name\": \"{{sizeName}}\" } },\n    { \"productId\": \"{{productId}}\", \"qty\": 99, \"size\": { \"name\": \"{{sizeName}}\" } }\n  ]\n}"
@@ -220,7 +380,12 @@
           "name": "Create a pending two-drink order",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"qty\": 2,\n      \"size\": { \"name\": \"{{sizeName}}\", \"price\": 999999 },\n      \"toppings\": []\n    }\n  ]\n}"
@@ -277,7 +442,12 @@
           "name": "Create an order with no matching recipe",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [{ \"productId\": \"{{productId}}\", \"qty\": 1, \"size\": { \"name\": \"NOT-A-SIZE\" } }]\n}"
@@ -297,10 +467,15 @@
           ]
         },
         {
-          "name": "Cancel a pending order and restore ingredients",
+          "name": "Create pending order to test cancellation",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [{ \"productId\": \"{{productId}}\", \"qty\": 1, \"size\": { \"name\": \"{{sizeName}}\" } }]\n}"
@@ -324,7 +499,12 @@
           "name": "Cancel order",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{ \"reason\": \"Postman inventory test\" }"
@@ -367,13 +547,18 @@
       ]
     },
     {
-      "name": "Payments, loyalty, and order states",
+      "name": "3. Payments & Idempotency Rules (Task 10b)",
       "item": [
         {
           "name": "Reject payment without Idempotency-Key",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"orderId\": \"{{paidOrderId}}\",\n  \"method\": \"WALLET\"\n}"
@@ -397,8 +582,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Idempotency-Key", "value": "{{paymentKey}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{paymentKey}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -430,8 +621,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Idempotency-Key", "value": "{{paymentKey}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{paymentKey}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -457,8 +654,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Idempotency-Key", "value": "{{paymentKey}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{paymentKey}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -497,14 +700,59 @@
               }
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "4. Order State Machine & Fulfillment (Task 10a & E2E)",
+      "item": [
+        {
+          "name": "State Machine: Reject illegal state jump (PAID to COMPLETED)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{baristaToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"COMPLETED\"\n}"
+            },
+            "url": "{{baseUrl}}/orders/{{paidOrderId}}/status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Illegal state transition (skipping steps) is blocked with 400 or 409', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 409]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Move paid order to preparing",
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{baristaToken}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{baristaToken}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -530,8 +778,14 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{baristaToken}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{baristaToken}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -557,8 +811,14 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{baristaToken}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{baristaToken}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -603,19 +863,41 @@
           ]
         },
         {
-          "name": "Reject barista order listing without token",
+          "name": "Get authenticated customer orders (GET /orders/me)",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/orders"
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "me"
+              ]
+            }
           },
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "pm.test('protected order listing rejects anonymous request', () => pm.response.to.have.status(401));"
-                ]
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Orders list includes completed order\", () => {",
+                  "  const orders = pm.response.json();",
+                  "  pm.expect(Array.isArray(orders)).to.be.true;",
+                  "  const found = orders.find(o => o.id === pm.collectionVariables.get(\"paidOrderId\"));",
+                  "  pm.expect(found).to.exist;",
+                  "  pm.expect(found.status).to.eql(\"COMPLETED\");",
+                  "});"
+                ],
+                "type": "text/javascript"
               }
             }
           ]
