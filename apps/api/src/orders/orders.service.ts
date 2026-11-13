@@ -9,7 +9,16 @@ import { PrismaService } from "../prisma/prisma.service";
 import { CreateOrderDto } from "./order.dto";
 
 const allowedTransitions: Partial<Record<OrderStatus, OrderStatus[]>> = {
-  [OrderStatus.PAID]: [OrderStatus.PREPARING],
+  [OrderStatus.PENDING]: [
+    OrderStatus.PAID,
+    OrderStatus.CANCELLED,
+    OrderStatus.PAYMENT_FAILED,
+  ],
+  [OrderStatus.PAYMENT_FAILED]: [
+    OrderStatus.PAID,
+    OrderStatus.CANCELLED,
+  ],
+  [OrderStatus.PAID]: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
   [OrderStatus.PREPARING]: [OrderStatus.READY],
   [OrderStatus.READY]: [OrderStatus.COMPLETED],
 };
@@ -51,35 +60,51 @@ export class OrdersService {
 
             const products = await tx.product.findMany({
               where: { id: { in: [...quantities.keys()] } },
-              include: { sizes: true, toppings: true },
+              include: {
+                sizes: { include: { recipe: { include: { ingredient: true } } } },
+                toppings: true,
+              },
             });
             if (products.length !== quantities.size) {
               throw new NotFoundException("One or more products were not found");
             }
 
             const productsById = new Map(products.map((product) => [product.id, product]));
+            const ingredientNeeds = new Map<
+              string,
+              {
+                name: string;
+                unit: string;
+                quantity: number;
+                stockQuantity: number;
+                stockVersion: number;
+              }
+            >();
             const lines = normalizedItems.map((item) => {
               const product = productsById.get(item.productId);
               if (!product) {
                 throw new NotFoundException(`Product ${item.productId} not found`);
               }
-
               const quantity = item.quantity ?? 1;
-              const selectedSize = item.size
-                ? product.sizes.find((size) => size.name === item.size?.name)
-                : undefined;
-              if (item.size && !selectedSize) {
+              const requestedSizeName = item.size?.name || item.sizeName;
+              const selectedSize = requestedSizeName
+                ? product.sizes.find((size) => size.name === requestedSizeName)
+                : product.sizes[0];
+              if (!selectedSize) {
                 throw new BadRequestException(
-                  `Size ${item.size.name} is not available for ${product.name}`,
+                  requestedSizeName
+                    ? `Size ${requestedSizeName} is not available for ${product.name}`
+                    : `No sizes configured for ${product.name}`,
                 );
               }
-              const selectedToppings = (item.toppings ?? []).map((topping) => {
+              const selectedToppings = (item.toppings ?? []).map((topping: any) => {
+                const toppingName = typeof topping === "string" ? topping : topping?.name;
                 const option = product.toppings.find(
-                  (available) => available.name === topping.name,
+                  (available) => available.name === toppingName,
                 );
                 if (!option) {
                   throw new BadRequestException(
-                    `Topping ${topping.name} is not available for ${product.name}`,
+                    `Topping ${toppingName} is not available for ${product.name}`,
                   );
                 }
                 return { name: option.name, price: option.price };
@@ -96,6 +121,32 @@ export class OrdersService {
                 0,
               );
               const unitPrice = product.price + sizePrice + toppingsPrice;
+              const ingredientSnapshot = selectedSize.recipe.map((recipe) => {
+                const amount = recipe.quantity * quantity;
+                const existing = ingredientNeeds.get(recipe.ingredientId);
+                if (existing) {
+                  existing.quantity += amount;
+                } else {
+                  ingredientNeeds.set(recipe.ingredientId, {
+                    name: recipe.ingredient.name,
+                    unit: recipe.ingredient.unit,
+                    quantity: amount,
+                    stockQuantity: recipe.ingredient.stockQuantity,
+                    stockVersion: recipe.ingredient.stockVersion,
+                  });
+                }
+                return {
+                  ingredientId: recipe.ingredientId,
+                  name: recipe.ingredient.name,
+                  unit: recipe.ingredient.unit,
+                  quantity: amount,
+                };
+              });
+              if (ingredientSnapshot.length === 0) {
+                throw new BadRequestException(
+                  `No ingredient recipe configured for ${product.name} (${selectedSize.name})`,
+                );
+              }
               return {
                 productId: product.id,
                 name: product.name,
@@ -103,11 +154,10 @@ export class OrdersService {
                 sizePrice,
                 toppingsPrice,
                 toppings: selectedToppings,
+                ingredients: ingredientSnapshot,
                 unitPrice,
                 quantity,
                 lineTotal: unitPrice * quantity,
-                stock: product.stock,
-                stockVersion: product.stockVersion,
               };
             });
 
@@ -131,6 +181,16 @@ export class OrdersService {
               coupon = await tx.coupon.findUnique({ where: { code: couponCode } });
               if (!coupon) {
                 throw new BadRequestException("Coupon code is invalid");
+              }
+              if (dto.userId) {
+                const used = await tx.couponRedemption.findUnique({
+                  where: {
+                    couponId_userId: { couponId: coupon.id, userId: dto.userId },
+                  },
+                });
+                if (used) {
+                  throw new BadRequestException("Bạn đã sử dụng mã giảm giá này rồi");
+                }
               }
               const now = new Date();
               if (
@@ -157,25 +217,21 @@ export class OrdersService {
               discountAmount = Math.min(discountAmount, subtotal);
             }
 
-            for (const [productId, quantity] of quantities) {
-              const product = productsById.get(productId);
-              if (!product) {
-                throw new NotFoundException(`Product ${productId} not found`);
-              }
-              const result = await tx.product.updateMany({
+            for (const [ingredientId, needed] of ingredientNeeds) {
+              const result = await tx.ingredient.updateMany({
                 where: {
-                  id: productId,
-                  stockVersion: product.stockVersion,
-                  stock: { gte: quantity },
+                  id: ingredientId,
+                  stockVersion: needed.stockVersion,
+                  stockQuantity: { gte: needed.quantity },
                 },
                 data: {
-                  stock: { decrement: quantity },
+                  stockQuantity: { decrement: needed.quantity },
                   stockVersion: { increment: 1 },
                 },
               });
               if (result.count !== 1) {
                 throw new ConflictException(
-                  `Insufficient or concurrently changed inventory for ${product.name}`,
+                  `Insufficient or concurrently changed inventory for ${needed.name}`,
                 );
               }
             }
@@ -189,9 +245,7 @@ export class OrdersService {
                 total: subtotal - discountAmount,
                 couponCode: coupon?.code,
                 items: {
-                  create: lines.map(
-                    ({ stock, stockVersion, ...line }) => line,
-                  ),
+                  create: lines,
                 },
               },
               include: { items: true },
@@ -217,6 +271,20 @@ export class OrdersService {
       }
     }
     throw new ConflictException("Could not reserve inventory; please retry");
+  }
+
+  async findAll(status?: OrderStatus) {
+    return this.prisma.order.findMany({
+      where: status ? { status } : undefined,
+      include: {
+        items: true,
+        payment: true,
+        user: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
   }
 
   async findOne(id: string) {
@@ -245,7 +313,102 @@ export class OrdersService {
     });
   }
 
+  async cancelOrder(id: string, reason?: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+    if (!order) {
+      throw new NotFoundException("Order not found");
+    }
+    if (
+      order.status !== OrderStatus.PENDING &&
+      order.status !== OrderStatus.PAID &&
+      order.status !== OrderStatus.PAYMENT_FAILED
+    ) {
+      throw new ConflictException(
+        `Không thể hủy đơn hàng ở trạng thái ${order.status}`,
+      );
+    }
+
+    return await this.prisma.$transaction(
+      async (tx) => {
+        // 1. Cập nhật trạng thái đơn hàng sang CANCELLED
+        const updated = await tx.order.updateMany({
+          where: { id: order.id, status: order.status },
+          data: { status: OrderStatus.CANCELLED },
+        });
+        if (updated.count !== 1) {
+          throw new ConflictException("Đơn hàng đã bị thay đổi đồng thời");
+        }
+
+        // 2. Restore the exact ingredient quantities reserved for each item.
+        const ingredientRestocks = new Map<string, number>();
+        for (const item of order.items) {
+          if (!Array.isArray(item.ingredients)) {
+            throw new ConflictException(
+              `Ingredient usage is missing for order item ${item.id}`,
+            );
+          }
+          for (const ingredient of item.ingredients) {
+            if (
+              typeof ingredient !== "object" ||
+              ingredient === null ||
+              !("ingredientId" in ingredient) ||
+              typeof ingredient.ingredientId !== "string" ||
+              !("quantity" in ingredient) ||
+              typeof ingredient.quantity !== "number" ||
+              !Number.isInteger(ingredient.quantity) ||
+              ingredient.quantity < 0
+            ) {
+              throw new ConflictException(
+                `Ingredient usage is invalid for order item ${item.id}`,
+              );
+            }
+            ingredientRestocks.set(
+              ingredient.ingredientId,
+              (ingredientRestocks.get(ingredient.ingredientId) ?? 0) +
+                ingredient.quantity,
+            );
+          }
+        }
+
+        for (const [ingredientId, quantity] of ingredientRestocks) {
+          await tx.ingredient.update({
+            where: { id: ingredientId },
+            data: {
+              stockQuantity: { increment: quantity },
+              stockVersion: { increment: 1 },
+            },
+          });
+        }
+
+        // 3. Nếu đơn có dùng coupon thì hoàn lại lượt sử dụng coupon
+        if (order.couponCode) {
+          const redemption = await tx.couponRedemption.findUnique({
+            where: { orderId: order.id },
+          });
+          if (redemption) {
+            await tx.couponRedemption.delete({
+              where: { orderId: order.id },
+            });
+          }
+        }
+
+        return tx.order.findUnique({
+          where: { id },
+          include: { items: true, payment: true },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  }
+
   async transition(id: string, nextStatus: OrderStatus) {
+    if (nextStatus === OrderStatus.CANCELLED) {
+      return this.cancelOrder(id);
+    }
+
     const order = await this.prisma.order.findUnique({ where: { id } });
     if (!order) {
       throw new NotFoundException("Order not found");

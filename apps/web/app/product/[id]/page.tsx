@@ -5,14 +5,16 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getProductById } from "@/services/product.service";
 import { useCartStore } from "@/store/useCartStore";
-import { ProductOption } from "@/types";
+import { Product, ProductOption } from "@/types";
 
 function ProductDetailContent() {
   const params = useParams();
   const router = useRouter();
-  const productId = params?.id as string;
+  const productId = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
 
-  const product = getProductById(productId);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
   const addItem = useCartStore((state) => state.addItem);
   const totalCartItems = useCartStore((state) => state.getTotalItems());
 
@@ -24,14 +26,34 @@ function ProductDetailContent() {
 
   useEffect(() => {
     setMounted(true);
-    if (product && product.sizes && product.sizes.length > 0) {
-      setSelectedSize(product.sizes[0]);
-    } else {
-      setSelectedSize({ name: "Tiêu chuẩn", price: 0 });
-    }
-  }, [product]);
+    if (!productId) return;
 
-  if (!mounted) return null;
+    setIsLoading(true);
+    getProductById(productId)
+      .then((data) => {
+        setProduct(data);
+        if (data && data.sizes && data.sizes.length > 0) {
+          const first = data.sizes[0];
+          setSelectedSize({
+            name: first.name,
+            price: (first as any).price ?? (first as any).priceAdjustment ?? 0,
+          });
+        } else {
+          setSelectedSize({ name: "Tiêu chuẩn", price: 0 });
+        }
+      })
+      .catch((err) => console.error("Lỗi tải món nước:", err))
+      .finally(() => setIsLoading(false));
+  }, [productId]);
+
+  if (!mounted || isLoading) {
+    return (
+      <div className="min-h-screen bg-neutral-900 text-neutral-400 flex flex-col items-center justify-center gap-3">
+        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+        <span className="text-sm">Đang tải chi tiết món nước...</span>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -40,7 +62,7 @@ function ProductDetailContent() {
         <p className="text-neutral-400 text-sm mt-2">Món bạn chọn có thể đã ngừng phục vụ hoặc không tồn tại.</p>
         <Link
           href="/"
-          className="mt-6 px-6 py-2.5 bg-amber-500 text-neutral-950 font-semibold rounded-xl text-sm"
+          className="mt-6 px-6 py-2.5 bg-amber-500 text-neutral-950 font-semibold rounded-xl text-sm transition active:scale-95"
         >
           Quay lại thực đơn
         </Link>
@@ -57,18 +79,23 @@ function ProductDetailContent() {
     }
   };
 
-  const sizePrice = selectedSize?.price || 0;
-  const toppingsPrice = selectedToppings.reduce((sum, t) => sum + t.price, 0);
-  const unitPrice = product.price + sizePrice + toppingsPrice;
+  const productPrice = Number(product.price ?? product.basePrice ?? 0);
+  const stock = Number(product.stock ?? 0);
+  const isOutOfStock = stock <= 0;
+  const isLowStock = stock >= 1 && stock <= 5;
+
+  const sizePrice = Number(selectedSize?.price || 0);
+  const toppingsPrice = selectedToppings.reduce((sum, t) => sum + Number(t.price || 0), 0);
+  const unitPrice = productPrice + sizePrice + toppingsPrice;
   const totalPrice = unitPrice * quantity;
 
   const handleAddToCart = () => {
-    if (!selectedSize) return;
+    if (isOutOfStock || !selectedSize) return;
 
     addItem({
       productId: product.id,
       name: product.name,
-      basePrice: product.price,
+      basePrice: productPrice,
       size: selectedSize,
       toppings: selectedToppings,
       qty: quantity,
@@ -91,7 +118,7 @@ function ProductDetailContent() {
           </svg>
         </button>
 
-        <span className="font-semibold text-sm text-neutral-300">Tùy chỉnh món</span>
+        <span className="font-semibold text-sm text-neutral-300">Tùy chọn món</span>
 
         <Link
           href="/cart"
@@ -109,36 +136,66 @@ function ProductDetailContent() {
       </header>
 
       <main className="max-w-xl mx-auto px-6 pt-4">
-        <div className="w-full aspect-[4/3] rounded-3xl overflow-hidden bg-neutral-800 border border-neutral-800 shadow-xl">
-          <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+        {/* Khối hiển thị ảnh có fallback nếu link bị 404 */}
+        <div className="w-full aspect-[4/3] rounded-3xl overflow-hidden bg-neutral-800 border border-neutral-800 shadow-xl relative flex items-center justify-center">
+          {product.imageUrl ? (
+            <img
+              src={product.imageUrl}
+              alt={product.name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+                const fallback = e.currentTarget.parentElement?.querySelector(".fallback-coffee");
+                if (fallback) fallback.classList.remove("hidden");
+              }}
+            />
+          ) : null}
+          <div className={`fallback-coffee flex flex-col items-center justify-center text-neutral-600 gap-1.5 ${product.imageUrl ? "hidden" : ""}`}>
+            <span className="text-4xl">☕</span>
+            <span className="text-xs uppercase font-bold text-neutral-500">BrewLite Coffee</span>
+          </div>
         </div>
 
         <div className="mt-5">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-white">{product.name}</h1>
-            <span className="text-lg font-bold text-amber-500">
-              {product.price.toLocaleString("vi-VN")} đ
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl font-bold text-white">{product.name}</h1>
+              {isOutOfStock && (
+                <span className="bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs px-2.5 py-0.5 rounded-full font-bold">
+                  Hết món
+                </span>
+              )}
+            </div>
+            <span className="text-lg font-bold text-amber-500 shrink-0">
+              {productPrice.toLocaleString("vi-VN")} đ
             </span>
           </div>
-          <p className="text-xs text-neutral-400 mt-1">Còn lại: {product.stock} phần trong kho</p>
+
+          {/* Cảnh báo nhẹ khi sắp hết hàng (FOMO) */}
+          {isLowStock && (
+            <p className="text-xs text-amber-400 font-medium mt-1.5 flex items-center gap-1">
+              <span>⚡ Chỉ còn {stock} phần cuối hôm nay</span>
+            </p>
+          )}
         </div>
 
         <hr className="border-neutral-800 my-6" />
 
+        {/* Danh sách Kích cỡ (Size) */}
         {product.sizes && product.sizes.length > 0 && (
           <section className="mb-6">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-white text-sm">Chọn kích cỡ (Size)</h2>
-              <span className="text-xs text-amber-500/80 font-medium bg-amber-500/10 px-2 py-0.5 rounded">Bắt buộc</span>
             </div>
 
             <div className="grid grid-cols-3 gap-3">
-              {product.sizes.map((size) => {
+              {product.sizes.map((size: any) => {
+                const sPrice = Number(size.price ?? size.priceAdjustment ?? 0);
                 const isSelected = selectedSize?.name === size.name;
                 return (
                   <button
                     key={size.name}
-                    onClick={() => setSelectedSize(size)}
+                    onClick={() => setSelectedSize({ name: size.name, price: sPrice })}
                     className={`py-3 px-4 rounded-2xl border text-center transition flex flex-col items-center justify-center gap-1 ${
                       isSelected
                         ? "border-amber-500 bg-amber-500/10 text-amber-400 font-bold shadow-sm"
@@ -147,7 +204,7 @@ function ProductDetailContent() {
                   >
                     <span className="text-base font-semibold">{size.name}</span>
                     <span className="text-xs font-normal">
-                      {size.price === 0 ? "Tiêu chuẩn" : `+${size.price.toLocaleString("vi-VN")}đ`}
+                      {sPrice === 0 ? "Tiêu chuẩn" : `+${sPrice.toLocaleString("vi-VN")}đ`}
                     </span>
                   </button>
                 );
@@ -156,6 +213,7 @@ function ProductDetailContent() {
           </section>
         )}
 
+        {/* Danh sách Topping */}
         {product.toppings && product.toppings.length > 0 && (
           <section className="mb-6">
             <div className="flex items-center justify-between mb-3">
@@ -164,12 +222,13 @@ function ProductDetailContent() {
             </div>
 
             <div className="space-y-2.5">
-              {product.toppings.map((topping) => {
+              {product.toppings.map((topping: any) => {
+                const tPrice = Number(topping.price ?? topping.priceAdjustment ?? 0);
                 const isChecked = selectedToppings.some((t) => t.name === topping.name);
                 return (
                   <button
                     key={topping.name}
-                    onClick={() => toggleTopping(topping)}
+                    onClick={() => toggleTopping({ name: topping.name, price: tPrice })}
                     className={`w-full p-3.5 rounded-2xl border flex items-center justify-between transition ${
                       isChecked
                         ? "border-amber-500/80 bg-amber-500/10 text-white"
@@ -192,7 +251,7 @@ function ProductDetailContent() {
                     </div>
 
                     <span className="text-xs text-amber-500 font-semibold">
-                      +{topping.price.toLocaleString("vi-VN")} đ
+                      +{tPrice.toLocaleString("vi-VN")} đ
                     </span>
                   </button>
                 );
@@ -201,19 +260,22 @@ function ProductDetailContent() {
           </section>
         )}
 
-        <section className="flex items-center justify-between p-4 bg-neutral-800/40 border border-neutral-800 rounded-2xl">
+        {/* Tăng / giảm số lượng ly */}
+        <section className={`flex items-center justify-between p-4 bg-neutral-800/40 border border-neutral-800 rounded-2xl ${isOutOfStock ? "opacity-40 pointer-events-none" : ""}`}>
           <span className="font-semibold text-sm text-neutral-200">Số lượng ly</span>
           <div className="flex items-center gap-3 bg-neutral-900 border border-neutral-700/60 rounded-xl p-1">
             <button
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="w-8 h-8 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white flex items-center justify-center transition active:scale-90"
+              disabled={isOutOfStock || quantity <= 1}
+              className="w-8 h-8 rounded-lg bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 text-white flex items-center justify-center transition active:scale-90"
             >
               -
             </button>
-            <span className="w-8 text-center font-bold text-white text-sm">{quantity}</span>
+            <span className="w-8 text-center font-bold text-white text-sm">{isOutOfStock ? 0 : quantity}</span>
             <button
               onClick={() => setQuantity(quantity + 1)}
-              className="w-8 h-8 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white flex items-center justify-center transition active:scale-90"
+              disabled={isOutOfStock || (stock > 0 && quantity >= stock)}
+              className="w-8 h-8 rounded-lg bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 text-white flex items-center justify-center transition active:scale-90"
             >
               +
             </button>
@@ -221,17 +283,23 @@ function ProductDetailContent() {
         </section>
       </main>
 
+      {/* Floating Bottom Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-neutral-950 via-neutral-950/90 to-transparent flex justify-center z-20">
         <button
           onClick={handleAddToCart}
-          className={`w-full max-w-xl py-4 px-6 rounded-2xl font-bold flex items-center justify-between transition shadow-xl active:scale-98 ${
-            isAdded
-              ? "bg-emerald-500 text-neutral-950 shadow-emerald-500/20"
-              : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/40"
+          disabled={isOutOfStock || isAdded}
+          className={`w-full max-w-xl py-4 px-6 rounded-2xl font-bold flex items-center justify-between transition shadow-xl ${
+            isOutOfStock
+              ? "bg-neutral-800 text-neutral-500 border border-neutral-700/60 cursor-not-allowed opacity-60 shadow-none"
+              : isAdded
+              ? "bg-emerald-500 text-neutral-950 shadow-emerald-500/20 active:scale-98"
+              : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/40 active:scale-98"
           }`}
         >
           <div className="flex items-center gap-2">
-            {isAdded ? (
+            {isOutOfStock ? (
+              <span>Hết món</span>
+            ) : isAdded ? (
               <>
                 <svg className="w-5 h-5 text-neutral-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -244,7 +312,7 @@ function ProductDetailContent() {
           </div>
 
           <span className="text-base font-extrabold tracking-tight">
-            {totalPrice.toLocaleString("vi-VN")} đ
+            {isOutOfStock ? "0 đ" : `${totalPrice.toLocaleString("vi-VN")} đ`}
           </span>
         </button>
       </div>

@@ -15,8 +15,33 @@ With Prisma 7, the PostgreSQL connection URL is configured in
 driver adapter, and the Prisma Client is generated automatically by the build
 and start scripts.
 
-The seed creates demo user `user-demo-01`, four menu products, and the `BREW10` coupon. Database stock and prices are authoritative; order creation accepts product IDs and quantities,
-not client-submitted prices.
+The seed resets demo credentials to `demo@brewlite.local` and
+`barista@brewlite.local` with password `123456`, and creates four menu products, ingredient
+inventory, product-size recipes, and the `BREW10` coupon. Product stock is
+derived from its size recipes; ingredient stock and prices in the database are
+authoritative.
+
+Inventory is tracked in whole grams or milliliters. Seed recipes use estimated
+per-size quantities (for example, 18 g coffee for a medium coffee and 150 ml
+milk for a medium milk coffee); replace these estimates with your actual recipes
+and starting ingredient quantities before production. Orders reserve recipe
+ingredients atomically, and cancellations restore the exact ingredient usage
+stored on each order item.
+
+## Postman integration tests
+
+Import `postman/BrewLite API.postman_collection.json` and
+`postman/BrewLite Local.postman_environment.json` into Postman. Start the API
+with a migrated and seeded development database, select the `BrewLite Local`
+environment, and run the entire collection in order. The seeded customer and
+barista credentials are `demo@brewlite.local` / `barista@brewlite.local`,
+password `123456`.
+
+The collection checks validation, ingredient availability and reservation,
+cancellation/restocking, idempotent payments, loyalty points, order history,
+and allowed order-state transitions. It creates a paid test order and accrues
+loyalty points, so run it against a disposable development database rather
+than production.
 
 ## Endpoints
 

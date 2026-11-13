@@ -75,4 +75,3 @@ else (Chưa thanh toán)
   endif
 endif
 @enduml
-EOF

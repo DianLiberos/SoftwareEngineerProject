@@ -4,22 +4,24 @@ node_modules/
 .pnp.js
 .yarn/
 
-# Build & Cache (Bắt sạch mọi cấp thư mục)
+# Next.js & Turbopack build/dev cache
 **/.next/
 **/out/
 **/build/
 **/.turbo/
 *.tsbuildinfo
 next-env.d.ts
-apps/api/dist/
+
+# NestJS build output & Prisma generated
+**/dist/
 apps/api/src/generated/
 
-# Environment
+# Environment Variables
 .env
 .env*.local
 *.env
 
-# IDE & OS
+# OS & IDE
 .DS_Store
 Thumbs.db
 .vscode/

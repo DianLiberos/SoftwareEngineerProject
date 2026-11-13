@@ -1,6 +1,10 @@
-import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
-import { CreateOrderDto, UpdateOrderStatusDto } from "./order.dto";
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { OrderStatus, Role } from "../generated/prisma/client";
+import { CancelOrderDto, CreateOrderDto, UpdateOrderStatusDto } from "./order.dto";
 import { OrdersService } from "./orders.service";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { Roles } from "../auth/decorators/roles.decorator";
 
 @Controller("orders")
 export class OrdersController {
@@ -9,6 +13,19 @@ export class OrdersController {
   @Post()
   create(@Body() dto: CreateOrderDto) {
     return this.ordersService.create(dto);
+  }
+
+  @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.BARISTA, Role.ADMIN)
+  findAll(@Query("status") status?: OrderStatus) {
+    return this.ordersService.findAll(status);
+  }
+
+  @Get("me")
+  @UseGuards(JwtAuthGuard)
+  findMyOrders(@Req() req: any) {
+    return this.ordersService.findByUser(req.user.id);
   }
 
   @Get("user/:userId")
@@ -22,7 +39,14 @@ export class OrdersController {
   }
 
   @Patch(":id/status")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.BARISTA, Role.ADMIN)
   updateStatus(@Param("id") id: string, @Body() dto: UpdateOrderStatusDto) {
     return this.ordersService.transition(id, dto.status);
+  }
+
+  @Patch(":id/cancel")
+  cancel(@Param("id") id: string, @Body() dto?: CancelOrderDto) {
+    return this.ordersService.cancelOrder(id, dto?.reason);
   }
 }

@@ -14,6 +14,8 @@ enum OrderStatus {
   PREPARING
   READY
   COMPLETED
+  CANCELLED
+  PAYMENT_FAILED
 }
 
 enum PaymentMethod {
@@ -26,9 +28,22 @@ enum DiscountType {
   FIXED
 }
 
+enum Role {
+  CUSTOMER
+  BARISTA
+  ADMIN
+}
+
+enum IngredientUnit {
+  GRAM
+  MILLILITER
+}
+
 model User {
   id            String             @id @default(cuid())
   email         String             @unique
+  password      String
+  role          Role               @default(CUSTOMER)
   name          String
   loyaltyPoints Int                @default(0)
   orders        Order[]
@@ -38,26 +53,49 @@ model User {
 }
 
 model Product {
-  id           String           @id @default(cuid())
-  name         String
-  price        Int
-  stock        Int              @default(0)
-  stockVersion Int              @default(0)
-  sizes        ProductSize[]
-  toppings     ProductTopping[]
-  orderItems   OrderItem[]
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  id         String           @id @default(cuid())
+  name       String
+  price      Int
+  sizes      ProductSize[]
+  toppings   ProductTopping[]
+  orderItems OrderItem[]
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  imageUrl   String?
 }
 
 model ProductSize {
-  id        String  @id @default(cuid())
+  id        String          @id @default(cuid())
   productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   name      String
   price     Int
+  recipe    ProductRecipe[]
 
   @@unique([productId, name])
+}
+
+model Ingredient {
+  id            String          @id @default(cuid())
+  name          String          @unique
+  unit          IngredientUnit
+  stockQuantity Int             @default(0)
+  stockVersion  Int             @default(0)
+  recipes       ProductRecipe[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model ProductRecipe {
+  id            String      @id @default(cuid())
+  productSizeId String
+  productSize   ProductSize @relation(fields: [productSizeId], references: [id], onDelete: Cascade)
+  ingredientId  String
+  ingredient    Ingredient  @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  quantity      Int
+
+  @@unique([productSizeId, ingredientId])
+  @@index([ingredientId])
 }
 
 model ProductTopping {
@@ -98,6 +136,7 @@ model OrderItem {
   sizePrice     Int     @default(0)
   toppingsPrice Int     @default(0)
   toppings      Json    @default("[]")
+  ingredients   Json    @default("[]")
   unitPrice     Int
   quantity      Int
   lineTotal     Int

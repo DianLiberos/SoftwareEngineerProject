@@ -32,8 +32,7 @@ Quyết định áp dụng cấu trúc **Monorepo chuẩn**, phân chia mã ngu�
 3. Đáp ứng yêu cầu tổ chức repository của môn học.
 
 ### Tiêu cực & Biện pháp giảm thiểu:
-- *Nguy cơ:* Git phình to do dính file build cache (`.next/`, `dist/`).
+- *Nguy cơ:* Git phình to do dính file build cache (`.next/`, `dist/`)
   - *Giải pháp:* Cấu hình `.gitignore` nghiêm ngặt chặn các đường dẫn `apps/web/.next/`, `apps/api/dist/`.
 - *Nguy cơ:* Xung đột cổng khi chạy song song.
-  - *Giải pháp:* Phân định rạch ròi cổng mặc định: `3000` (Next.js) và `3001` (NestJS).
-EOF
+  - *Giải pháp:* Phân định rạch ròi cổng mặc định: `3000` (Next.js) và `3001` (NestJS)
