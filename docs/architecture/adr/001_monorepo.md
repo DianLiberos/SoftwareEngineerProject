@@ -8,7 +8,7 @@ Dự án BrewLite bao gồm hai thành phần phần mềm riêng biệt:
 - **Frontend (`apps/web`):** Ứng dụng Next.js 16 (App Router, Tailwind CSS v4, Zustand) phục vụ giao diện đặt món cho khách hàng.
 - **Backend (`apps/api`):** Ứng dụng NestJS REST API kết nối cơ sở dữ liệu PostgreSQL thông qua Prisma ORM.
 
-Đội ngũ phát triển gồm 2 thành viên vận hành theo quy trình Agile Scrum với chu kỳ sprint ngắn. Cần đưa ra quyết định về cấu trúc kho mã nguồn giữa hai phương án: **Multi-repo** (2 kho riêng biệt) và **Monorepo** (1 kho duy nhất quản lý cả 2 ứng dụng)
+Đội ngũ phát triển gồm 2 thành viên vận hành theo quy trình Agile Scrum với chu kỳ sprint ngắn. Cần đưa ra quyết định về cấu trúc kho mã nguồn giữa hai phương án: **Multi-repo** (2 kho riêng biệt) và **Monorepo** (1 kho duy nhất quản lý cả 2 ứng dụng).
 
 ## Quyết định
 Quyết định áp dụng cấu trúc **Monorepo chuẩn**, phân chia mã nguồn theo thư mục:
@@ -20,7 +20,7 @@ Quyết định áp dụng cấu trúc **Monorepo chuẩn**, phân chia mã ngu�
 
 | Tiêu chí so sánh | Phương án Multi-repo | Phương án Monorepo (Được chọn) |
 | :--- | :--- | :--- |
-| **Đồng bộ mã nguồn & PR** | Phức tạp: Phải mở 2 PR riêng rẽ khi thay đổi một tính năng end-to-end (ví dụ: đổi DTO tạo đơn) Dễ lệch pha phiên bản. | Đơn giản: 1 Pull Request duy nhất phản ánh trọn vẹn cả thay đổi Frontend, Backend và tài liệu liên quan. |
+| **Đồng bộ mã nguồn & PR** | Phức tạp: Phải mở 2 PR riêng rẽ khi thay đổi một tính năng end-to-end (ví dụ: đổi DTO tạo đơn). Dễ lệch pha phiên bản. | Đơn giản: 1 Pull Request duy nhất phản ánh trọn vẹn cả thay đổi Frontend, Backend và tài liệu liên quan. |
 | **Chia sẻ quy chuẩn dữ liệu** | Phải đóng gói npm package riêng hoặc copy thủ công các file interface DTO. | Dễ dàng đồng bộ kiểu dữ liệu (TypeScript Types/Contracts) giữa Web và API. |
 | **Chi phí quản lý Git** | Quản lý 2 CI/CD pipeline, 2 bộ issue và release tags rời rạc. | Quản lý tập trung trên một Kanban Board và một lịch sử Git duy nhất theo barem môn học. |
 
