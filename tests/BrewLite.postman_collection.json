@@ -8,59 +8,73 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:3001"
+      "value": "http://localhost:3001",
+      "type": "string"
     },
     {
       "key": "customerEmail",
-      "value": "demo@brewlite.local"
+      "value": "demo@brewlite.local",
+      "type": "string"
     },
     {
       "key": "customerPassword",
-      "value": "123456"
+      "value": "123456",
+      "type": "string"
     },
     {
       "key": "baristaEmail",
-      "value": "barista@brewlite.local"
+      "value": "barista@brewlite.local",
+      "type": "string"
     },
     {
       "key": "baristaPassword",
-      "value": "123456"
+      "value": "123456",
+      "type": "string"
     },
     {
       "key": "productId",
-      "value": "1"
+      "value": "1",
+      "type": "string"
     },
     {
       "key": "sizeName",
-      "value": "M"
+      "value": "M",
+      "type": "string"
     },
     {
       "key": "customerToken",
-      "value": ""
+      "value": "",
+      "type": "string"
     },
     {
       "key": "baristaToken",
-      "value": ""
+      "value": "",
+      "type": "string"
     },
     {
       "key": "userId",
-      "value": ""
+      "value": "",
+      "type": "string"
     },
     {
       "key": "paidOrderId",
-      "value": ""
+      "value": "",
+      "type": "string"
     },
     {
       "key": "cancelOrderId",
-      "value": ""
+      "value": "",
+      "type": "string"
     },
     {
       "key": "initialCoffeeStock",
-      "value": "0"
+      "value": "0",
+      "type": "string"
     },
     {
       "key": "stockBeforeCancel",
-      "value": "0"
+      "value": "0",
+      "type": "string"
     }
   ],
   "item": [
@@ -99,7 +113,8 @@
                 "type": "text/javascript"
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "Login as seeded customer",
@@ -108,14 +123,29 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
-            "url": "{{baseUrl}}/auth/login"
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
           },
           "event": [
             {
@@ -139,7 +169,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "Login as seeded barista",
@@ -148,14 +179,29 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{baristaEmail}}\",\n  \"password\": \"{{baristaPassword}}\"\n}"
+              "raw": "{\n  \"email\": \"{{baristaEmail}}\",\n  \"password\": \"{{baristaPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
-            "url": "{{baseUrl}}/auth/login"
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
           },
           "event": [
             {
@@ -175,7 +221,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "RBAC: Customer cannot update order status (403 Forbidden)",
@@ -184,18 +231,35 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "type": "text"
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{customerToken}}"
+                "value": "Bearer {{customerToken}}",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"status\": \"PREPARING\"\n}"
+              "raw": "{\n  \"status\": \"PREPARING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
-            "url": "{{baseUrl}}/orders/rbac-guard-test/status"
+            "url": {
+              "raw": "{{baseUrl}}/orders/rbac-guard-test/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "rbac-guard-test",
+                "status"
+              ]
+            }
           },
           "event": [
             {
@@ -209,13 +273,23 @@
                 "type": "text/javascript"
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "Reject barista order listing without token",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/orders"
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "header": []
           },
           "event": [
             {
@@ -227,13 +301,23 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "List products and record coffee stock",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/products"
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
+            },
+            "header": []
           },
           "event": [
             {
@@ -253,13 +337,25 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "Read initial loyalty points",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/users/{{userId}}/loyalty"
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/loyalty",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}",
+                "loyalty"
+              ]
+            },
+            "header": []
           },
           "event": [
             {
@@ -277,7 +373,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "Validate seeded BREW10 coupon",
@@ -286,14 +383,29 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"BREW10\",\n  \"orderAmount\": 100000,\n  \"userId\": \"{{userId}}\"\n}"
+              "raw": "{\n  \"code\": \"BREW10\",\n  \"orderAmount\": 100000,\n  \"userId\": \"{{userId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
-            "url": "{{baseUrl}}/coupons/validate"
+            "url": {
+              "raw": "{{baseUrl}}/coupons/validate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "coupons",
+                "validate"
+              ]
+            }
           },
           "event": [
             {
@@ -312,7 +424,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         }
       ]
     },
@@ -326,14 +439,28 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [{ \"productId\": \"{{productId}}\", \"qty\": 0, \"size\": { \"name\": \"{{sizeName}}\" } }]\n}"
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"qty\": 0,\n      \"size\": {\n        \"name\": \"{{sizeName}}\"\n      }\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
-            "url": "{{baseUrl}}/orders"
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            }
           },
           "event": [
             {
@@ -345,7 +472,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "Reject order that exceeds ingredient stock",
@@ -354,14 +482,28 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [\n    { \"productId\": \"{{productId}}\", \"qty\": 99, \"size\": { \"name\": \"{{sizeName}}\" } },\n    { \"productId\": \"{{productId}}\", \"qty\": 99, \"size\": { \"name\": \"{{sizeName}}\" } },\n    { \"productId\": \"{{productId}}\", \"qty\": 99, \"size\": { \"name\": \"{{sizeName}}\" } }\n  ]\n}"
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"qty\": 99,\n      \"size\": {\n        \"name\": \"{{sizeName}}\"\n      }\n    },\n    {\n      \"productId\": \"{{productId}}\",\n      \"qty\": 99,\n      \"size\": {\n        \"name\": \"{{sizeName}}\"\n      }\n    },\n    {\n      \"productId\": \"{{productId}}\",\n      \"qty\": 99,\n      \"size\": {\n        \"name\": \"{{sizeName}}\"\n      }\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
-            "url": "{{baseUrl}}/orders"
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            }
           },
           "event": [
             {
@@ -374,7 +516,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "Create a pending two-drink order",
@@ -383,14 +526,28 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"qty\": 2,\n      \"size\": { \"name\": \"{{sizeName}}\", \"price\": 999999 },\n      \"toppings\": []\n    }\n  ]\n}"
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"qty\": 2,\n      \"size\": {\n        \"name\": \"{{sizeName}}\",\n        \"price\": 999999\n      },\n      \"toppings\": []\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
-            "url": "{{baseUrl}}/orders"
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            }
           },
           "event": [
             {
@@ -414,13 +571,23 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "Check recipe-based stock was reserved",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/products"
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
+            },
+            "header": []
           },
           "event": [
             {
@@ -436,7 +603,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "Create an order with no matching recipe",
@@ -445,14 +613,28 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [{ \"productId\": \"{{productId}}\", \"qty\": 1, \"size\": { \"name\": \"NOT-A-SIZE\" } }]\n}"
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"qty\": 1,\n      \"size\": {\n        \"name\": \"NOT-A-SIZE\"\n      }\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
-            "url": "{{baseUrl}}/orders"
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            }
           },
           "event": [
             {
@@ -464,7 +646,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "Create pending order to test cancellation",
@@ -473,14 +656,28 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [{ \"productId\": \"{{productId}}\", \"qty\": 1, \"size\": { \"name\": \"{{sizeName}}\" } }]\n}"
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"qty\": 1,\n      \"size\": {\n        \"name\": \"{{sizeName}}\"\n      }\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
-            "url": "{{baseUrl}}/orders"
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            }
           },
           "event": [
             {
@@ -493,7 +690,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "Cancel order",
@@ -502,14 +700,30 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{ \"reason\": \"Postman inventory test\" }"
+              "raw": "{\n  \"reason\": \"Postman inventory test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
-            "url": "{{baseUrl}}/orders/{{cancelOrderId}}/cancel"
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{cancelOrderId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{cancelOrderId}}",
+                "cancel"
+              ]
+            }
           },
           "event": [
             {
@@ -522,13 +736,23 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "Check cancellation restored available product count",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/products"
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
+            },
+            "header": []
           },
           "event": [
             {
@@ -542,7 +766,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         }
       ]
     },
@@ -556,14 +781,28 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"orderId\": \"{{paidOrderId}}\",\n  \"method\": \"WALLET\"\n}"
+              "raw": "{\n  \"orderId\": \"{{paidOrderId}}\",\n  \"method\": \"WALLET\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
-            "url": "{{baseUrl}}/payments"
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments"
+              ]
+            }
           },
           "event": [
             {
@@ -575,7 +814,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "Pay pending order",
@@ -584,18 +824,33 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "type": "text"
               },
               {
                 "key": "Idempotency-Key",
-                "value": "{{paymentKey}}"
+                "value": "{{paymentKey}}",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"orderId\": \"{{paidOrderId}}\",\n  \"method\": \"WALLET\"\n}"
+              "raw": "{\n  \"orderId\": \"{{paidOrderId}}\",\n  \"method\": \"WALLET\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
-            "url": "{{baseUrl}}/payments"
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments"
+              ]
+            }
           },
           "event": [
             {
@@ -614,7 +869,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "Retry payment with same idempotency key",
@@ -623,18 +879,33 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "type": "text"
               },
               {
                 "key": "Idempotency-Key",
-                "value": "{{paymentKey}}"
+                "value": "{{paymentKey}}",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"orderId\": \"{{paidOrderId}}\",\n  \"method\": \"WALLET\"\n}"
+              "raw": "{\n  \"orderId\": \"{{paidOrderId}}\",\n  \"method\": \"WALLET\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
-            "url": "{{baseUrl}}/payments"
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments"
+              ]
+            }
           },
           "event": [
             {
@@ -647,7 +918,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "Reject reused key with different payment request",
@@ -656,18 +928,33 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "type": "text"
               },
               {
                 "key": "Idempotency-Key",
-                "value": "{{paymentKey}}"
+                "value": "{{paymentKey}}",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"orderId\": \"{{paidOrderId}}\",\n  \"method\": \"BANK_CARD\"\n}"
+              "raw": "{\n  \"orderId\": \"{{paidOrderId}}\",\n  \"method\": \"BANK_CARD\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
-            "url": "{{baseUrl}}/payments"
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments"
+              ]
+            }
           },
           "event": [
             {
@@ -679,13 +966,25 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "Verify loyalty points accrued",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/users/{{userId}}/loyalty"
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/loyalty",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}",
+                "loyalty"
+              ]
+            },
+            "header": []
           },
           "event": [
             {
@@ -699,7 +998,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         }
       ]
     },
@@ -713,18 +1013,35 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "type": "text"
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{baristaToken}}"
+                "value": "Bearer {{baristaToken}}",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"status\": \"COMPLETED\"\n}"
+              "raw": "{\n  \"status\": \"COMPLETED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
-            "url": "{{baseUrl}}/orders/{{paidOrderId}}/status"
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{paidOrderId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{paidOrderId}}",
+                "status"
+              ]
+            }
           },
           "event": [
             {
@@ -738,7 +1055,8 @@
                 "type": "text/javascript"
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "Move paid order to preparing",
@@ -747,18 +1065,35 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "type": "text"
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{baristaToken}}"
+                "value": "Bearer {{baristaToken}}",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{ \"status\": \"PREPARING\" }"
+              "raw": "{\n  \"status\": \"PREPARING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
-            "url": "{{baseUrl}}/orders/{{paidOrderId}}/status"
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{paidOrderId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{paidOrderId}}",
+                "status"
+              ]
+            }
           },
           "event": [
             {
@@ -771,7 +1106,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "Move preparing order to ready",
@@ -780,18 +1116,35 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "type": "text"
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{baristaToken}}"
+                "value": "Bearer {{baristaToken}}",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{ \"status\": \"READY\" }"
+              "raw": "{\n  \"status\": \"READY\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
-            "url": "{{baseUrl}}/orders/{{paidOrderId}}/status"
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{paidOrderId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{paidOrderId}}",
+                "status"
+              ]
+            }
           },
           "event": [
             {
@@ -804,7 +1157,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "Complete ready order",
@@ -813,18 +1167,35 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "type": "text"
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{baristaToken}}"
+                "value": "Bearer {{baristaToken}}",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{ \"status\": \"COMPLETED\" }"
+              "raw": "{\n  \"status\": \"COMPLETED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
-            "url": "{{baseUrl}}/orders/{{paidOrderId}}/status"
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{paidOrderId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{paidOrderId}}",
+                "status"
+              ]
+            }
           },
           "event": [
             {
@@ -837,13 +1208,25 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "Get customer order history",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/orders/user/{{userId}}"
+            "url": {
+              "raw": "{{baseUrl}}/orders/user/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "user",
+                "{{userId}}"
+              ]
+            },
+            "header": []
           },
           "event": [
             {
@@ -860,7 +1243,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "Get authenticated customer orders (GET /orders/me)",
@@ -869,7 +1253,8 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{customerToken}}"
+                "value": "Bearer {{customerToken}}",
+                "type": "text"
               }
             ],
             "url": {
@@ -900,7 +1285,8 @@
                 "type": "text/javascript"
               }
             }
-          ]
+          ],
+          "response": []
         }
       ]
     }

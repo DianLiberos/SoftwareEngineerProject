@@ -1,0 +1,208 @@
+\documentclass[a4paper]{article}
+\usepackage{vntex}
+\usepackage{a4wide,amssymb,latexsym,multicol,array,hhline,fancyhdr}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{lastpage}
+\usepackage{enumerate}
+\usepackage{color}
+\usepackage{graphicx}
+\usepackage{tabularx, caption}
+\usepackage{multirow}
+\usepackage[framemethod=tikz]{mdframed}
+\usepackage{tikz}
+\usepackage{listings}
+\usepackage{hyperref}
+\hypersetup{urlcolor=blue,linkcolor=black,citecolor=black,colorlinks=true}
+
+\setlength{\headheight}{40pt}
+\pagestyle{fancy}
+\fancyhead{}
+\fancyhead[L]{
+ \begin{tabular}{rl}
+    \begin{picture}(25,15)(0,0)
+    \put(0,-8){\includegraphics[width=8mm, height=8mm]{logoITSGUsmall.png}}
+   \end{picture}&
+	\begin{tabular}{l}
+		\textbf{\bf \ttfamily Trường Đại học Sài Gòn}\\
+		\textbf{\bf \ttfamily Khoa Công Nghệ Thông Tin}
+	\end{tabular} 	
+ \end{tabular}
+}
+\fancyhead[R]{
+	\begin{tabular}{l}
+		\tiny \bf BrewLite VER 1.0\\
+		\tiny \bf Assignment 2
+	\end{tabular}
+}
+\fancyfoot{}
+\fancyfoot[L]{\scriptsize \ttfamily Báo cáo Bài tập lớn môn Công nghệ Phần mềm - Học kỳ I (2026-2027)}
+\fancyfoot[R]{\scriptsize \ttfamily Trang {\thepage}/\pageref{LastPage}}
+\renewcommand{\headrulewidth}{0.3pt}
+\renewcommand{\footrulewidth}{0.3pt}
+
+\setcounter{secnumdepth}{4}
+\setcounter{tocdepth}{3}
+
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{
+	frame=tb,
+	aboveskip=3mm,
+	belowskip=3mm,
+	showstringspaces=false,
+	columns=flexible,
+	basicstyle={\small\ttfamily},
+	numbers=left,
+	numberstyle=\tiny\color{gray},
+	keywordstyle=\color{blue},
+	commentstyle=\color{dkgreen},
+	stringstyle=\color{mauve},
+	breaklines=true,
+	breakatwhitespace=true,
+	tabsize=2
+}
+
+\begin{document}
+
+\begin{titlepage}
+\begin{center}
+\textbf{\Large TRƯỜNG ĐẠI HỌC SÀI GÒN} \\
+\textbf{\Large KHOA CÔNG NGHỆ THÔNG TIN}
+\end{center}
+\vspace{1cm}
+
+\begin{figure}[h!]
+\begin{center}
+\includegraphics[width=3.5cm]{logoITSGU.png}
+\end{center}
+\end{figure}
+
+\vspace{1cm}
+
+\begin{center}
+\begin{tabular}{c}
+	\multicolumn{1}{l}{\textbf{{\Large BÁO CÁO BÀI TẬP LỚN – ASSIGNMENT 2}}}\\
+	\multicolumn{1}{l}{\textbf{{\large MÔN: CÔNG NGHỆ PHẦN MỀM}}}\\
+	~~\\
+	\hline
+	\\
+	\textbf{{\Huge BREWLITE VER 1.0}}\\
+	\\
+	\textbf{{\Large REQUIREMENTS TO DEPLOYMENT}}\\
+	\textbf{{\large Từ Phân Tích Yêu Cầu, Mô Hình Hóa Đến Triển Khai \& CI/CD}}\\
+	\\
+	\hline
+\end{tabular}
+\end{center}
+
+\vspace{2.5cm}
+
+\begin{table}[h!]
+\begin{center}
+\begin{tabular}{rrl}
+\textbf{Giảng viên hướng dẫn:} & & \textbf{Từ Lãng Phiêu} \\
+\textbf{Sinh viên thực hiện:}   & & Đỗ Duy Anh - 3124411007 \\
+								& & Nguyễn Trần Nhật Duy - 3124411057 \\
+\textbf{Học kỳ / Năm học:}     & & Học kỳ I – Năm học 2026–2027 \\
+\end{tabular}
+\end{center}
+\end{table}
+
+\vfill
+\begin{center}
+{\footnotesize TP. HỒ CHÍ MINH, THÁNG 11/2026}
+\end{center}
+\end{titlepage}
+
+\thispagestyle{empty}
+\newpage
+\tableofcontents
+\newpage
+
+\section{Tổng quan Assignment 2 \& Phạm vi sản phẩm}
+Assignment 2 hoàn thiện dự án BrewLite theo quy trình tuần tự: bắt đầu từ khai thác yêu cầu, mô hình hóa phân tích, thiết kế kiến trúc, hiện thực mã nguồn qua hai Sprint, xây dựng đường ống CI/CD tự động và triển khai hệ thống có thể truy cập được.
+\begin{itemize}
+    \item \textbf{Frontend:} Next.js 16 (App Router, Tailwind CSS v4, Zustand) mobile-first/PWA.
+    \item \textbf{Backend:} NestJS 10 REST API module hóa, áp dụng Guards và DTO Validation.
+    \item \textbf{Cơ sở dữ liệu:} PostgreSQL 16 Alpine và Prisma ORM 6.x trên Docker Compose.
+\end{itemize}
+
+\section{Quy trình từ yêu cầu đến triển khai (Task 1 đến Task 5)}
+Hệ thống tuân thủ quy tắc thực hiện tuần tự qua 5 Task:
+\begin{enumerate}
+    \item \textbf{Task 1 – Khai thác và đặc tả yêu cầu:} Xác định bối cảnh, stakeholder, phạm vi, bảng FR/NFR MoSCoW và đặc tả chi tiết 2 use-case trọng tâm (UC-01 Khởi tạo đơn, UC-02 Thanh toán lũy đẳng).
+    \item \textbf{Task 2 – Mô hình hóa hệ thống:} Xây dựng Activity Diagram (chu trình đặt hàng), Sequence Diagram (thanh toán an toàn với Idempotency-Key) và Class Domain Diagram (các thực thể CSDL).
+    \item \textbf{Task 3 – Thiết kế kiến trúc:} Ban hành ADR 001 (Monorepo), ADR 002 (Database Authoritative \& Idempotency) và Deployment Diagram hệ thống.
+    \item \textbf{Task 4 – Triển khai Sprint 1:} Thiết lập Monorepo, quản lý tài liệu Markdown/UML, hiện thực MVP Sprint 1 (Menu catalog), thiết lập GitHub Actions CI sơ khởi.
+    \item \textbf{Task 5 – Triển khai Sprint 2, CI/CD và Delivery:} Hoàn thiện Full-stack MVP, bộ kiểm thử tự động (20 Unit Tests Jest + 27 Integration Tests Postman), hoàn thiện CI/CD pipeline và chính sách hoàn nguyên (Rollback Strategy).
+\end{enumerate}
+
+\section{Task 1 – Khai thác và đặc tả yêu cầu}
+\subsection{Bối cảnh, Stakeholder và Phạm vi}
+Dự án giải quyết vấn đề nghẽn quầy vào giờ cao điểm, áp dụng mô hình đặt trước - lấy tại quầy. Bảng phân tích Stakeholders xác định rõ vai trò và kỳ vọng cốt lõi của Khách hàng, Barista, Chủ quán và Đội ngũ kỹ thuật.
+
+\subsection{Yêu cầu chức năng \& Phi chức năng}
+\begin{itemize}
+    \item \textbf{Yêu cầu chức năng (FR-01 đến FR-11):} Đầy đủ danh mục menu, tùy biến size/topping, giỏ hàng, xác thực JWT, tạo đơn hàng trừ kho, áp dụng mã BREW10, thanh toán lũy đẳng, tích lũy điểm Loyalty, tra cứu lịch sử đơn và chuyển trạng thái pha chế Barista.
+    \item \textbf{Yêu cầu phi chức năng (NFR-01 đến NFR-05):} API response $<$ 200ms, FCP $<$ 1.5s; Database Authoritative với ACID Transaction; Bắt buộc Header Idempotency-Key; Mã hóa bcrypt và RBAC RolesGuard.
+\end{itemize}
+
+\subsection{Đặc tả Use-case trọng tâm}
+Tài liệu đặc tả chi tiết luồng chính, luồng rẽ nhánh và ngoại lệ cho:
+\begin{itemize}
+    \item \textbf{UC-01 (Khởi tạo đơn hàng):} Client gửi ID và số lượng $\rightarrow$ Backend kiểm tra tồn kho nguyên liệu $\rightarrow$ Trừ kho nguyên tử $\rightarrow$ Tạo bản ghi Order PENDING.
+    \item \textbf{UC-02 (Thanh toán an toàn):} Client gửi Idempotency-Key $\rightarrow$ Kiểm tra chống trùng lặp $\rightarrow$ Xử lý Sandbox Payment $\rightarrow$ Đổi trạng thái sang PAID $\rightarrow$ Cộng điểm Loyalty.
+\end{itemize}
+
+\section{Task 2 – Mô hình hóa hệ thống (UML)}
+\subsection{Activity Diagram}
+Tệp nguồn: \texttt{docs/diagrams/activity-order.puml} (kèm file vector SVG). Mô hình hóa tương tác giữa Khách hàng, Hệ thống BrewLite và Barista, thể hiện các nhánh kiểm tra kho, validate coupon và cập nhật trạng thái đơn hàng.
+
+\subsection{Sequence Diagram}
+Tệp nguồn: \texttt{docs/diagrams/sequence-checkout.puml}. Chi tiết hóa các lời gọi hàm tuần tự giữa Client, OrdersController, PaymentsController, PrismaService và Database trong quy trình checkout và thanh toán lũy đẳng.
+
+\subsection{Class Domain Diagram}
+Tệp nguồn: \texttt{docs/diagrams/class-domain.puml}. Mô tả cấu trúc các thực thể: User, Role, Product, ProductSize, ProductTopping, Ingredient, ProductRecipe, Order, OrderItem, Payment, Coupon.
+
+\section{Task 3 – Thiết kế kiến trúc}
+\subsection{Các quyết định kiến trúc (ADRs)}
+\begin{itemize}
+    \item \textbf{ADR 001 (Monorepo):} Lựa chọn cấu trúc Monorepo thống nhất quản lý cả \texttt{apps/web} và \texttt{apps/api}, giúp đồng bộ kiểu dữ liệu TypeScript, quản lý 1 PR tập trung và tối ưu quy trình CI/CD.
+    \item \textbf{ADR 002 (Database Authoritative \& Idempotency):} Database làm chủ tuyệt đối về giá và tồn kho nguyên liệu; Áp dụng Header \texttt{Idempotency-Key} tại API thanh toán để chống trừ tiền kép.
+\end{itemize}
+
+\subsection{Deployment Diagram}
+Tệp nguồn: \texttt{docs/architecture/deployment.puml}. Mô hình hóa môi trường triển khai đa tầng gồm Client Web Browser, Next.js Server (Port 3000), NestJS API (Port 3001) và PostgreSQL Container (Port 5432).
+
+\section{Task 4 \& Task 5 – Triển khai Sprint, CI/CD và Kiểm thử}
+\subsection{Hiện thực Full-stack MVP}
+Hoàn thiện toàn bộ các trang giao diện Next.js (/ thực đơn, /product/[id] chi tiết, /checkout thanh toán, /barista pha chế, /profile cá nhân) và các module Backend tương ứng.
+
+\subsection{Kết quả kiểm thử tự động (Task 5.2)}
+\begin{itemize}
+    \item \textbf{Unit Tests (Jest):} Đạt \textbf{20/20 tests PASS (100\%)}, bao phủ toàn diện OrdersService (State machine, Recipe reservation, Cancellation restock), PaymentsService (Idempotency replay, conflict) và ProductsService (Derived stock calculation).
+    \item \textbf{Integration Tests (Postman):} Đạt \textbf{27/27 test cases PASS (100\%)}, chia thành 4 thư mục tuần tự: 1. Setup \& Auth $\rightarrow$ 2. Order Validation \& Inventory $\rightarrow$ 3. Payments \& Idempotency $\rightarrow$ 4. State Machine \& Fulfillment E2E.
+    \item \textbf{Tái tạo Database \& Health check:} File \texttt{seed.ts} tạo chuẩn tài khoản demo (Customer, Barista, mã BREW10); Endpoint \texttt{GET /health} trả về trạng thái ok và database connected.
+\end{itemize}
+
+\subsection{Pipeline CI/CD (GitHub Actions - Task 5.3)}
+Workflow \texttt{.github/workflows/ci.yml} tự động chạy kiểm thử song song Backend (Jest coverage, tsc, NestJS build) và Frontend (Typegen, tsc, Next.js build) trên mỗi Push và Pull Request.
+
+\subsection{Hướng dẫn triển khai \& Hoàn nguyên (Task 5.4)}
+Tài liệu \texttt{docs/deployment.md} đặc tả quy trình chạy Docker Compose, quản lý secrets và chính sách rollback 3 bước (Application rollback, Prisma migrate resolve rollback và Database backup restoration).
+
+\section{Ma trận truy vết yêu cầu}
+Ma trận truy vết tại \texttt{docs/traceability-matrix.md} liên kết 2 chiều đầy đủ 100\% các yêu cầu:
+$$\text{Mã Yêu Cầu (FR/NFR)} \Longleftrightarrow \text{Use-Case} \Longleftrightarrow \text{Sơ Đồ UML/ADR} \Longleftrightarrow \text{Mã Nguồn/API} \Longleftrightarrow \text{Mã Kiểm Thử (UT/IT)}$$
+
+\section{Checklist nộp bài \& Biên bản Sprint Retrospective}
+\subsection{Checklist nghiệm thu}
+Tất cả 9 tiêu chí nghiệm thu của đề bài (Mục 9.1) đều đã hoàn tất: Quyền truy cập repo, SRS, UML Diagrams, Source code, Test suites, CI/CD pipeline, Hướng dẫn vận hành, Rollback strategy và Video demo kịch bản.
+
+\subsection{Biên bản Sprint Retrospective}
+Nhóm đánh giá cao hiệu quả của cấu trúc Monorepo và cơ chế Database Authoritative. Kế hoạch hành động Sprint tiếp theo tập trung vào việc nâng cấp thông báo trạng thái đơn hàng thời gian thực qua WebSocket (Socket.io).
+
+\end{document}

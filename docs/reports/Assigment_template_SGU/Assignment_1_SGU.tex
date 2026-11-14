@@ -1,0 +1,221 @@
+\documentclass[a4paper]{article}
+\usepackage{vntex}
+\usepackage{a4wide,amssymb,latexsym,multicol,array,hhline,fancyhdr}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{lastpage}
+\usepackage{enumerate}
+\usepackage{color}
+\usepackage{graphicx}
+\usepackage{tabularx, caption}
+\usepackage{multirow}
+\usepackage[framemethod=tikz]{mdframed}
+\usepackage{tikz}
+\usepackage{listings}
+\usepackage{hyperref}
+\hypersetup{urlcolor=blue,linkcolor=black,citecolor=black,colorlinks=true}
+
+\setlength{\headheight}{40pt}
+\pagestyle{fancy}
+\fancyhead{}
+\fancyhead[L]{
+ \begin{tabular}{rl}
+    \begin{picture}(25,15)(0,0)
+    \put(0,-8){\includegraphics[width=8mm, height=8mm]{logoITSGUsmall.png}}
+   \end{picture}&
+	\begin{tabular}{l}
+		\textbf{\bf \ttfamily Trường Đại học Sài Gòn}\\
+		\textbf{\bf \ttfamily Khoa Công Nghệ Thông Tin}
+	\end{tabular} 	
+ \end{tabular}
+}
+\fancyhead[R]{
+	\begin{tabular}{l}
+		\tiny \bf BrewLite VER 1.0\\
+		\tiny \bf Assignment 1
+	\end{tabular}
+}
+\fancyfoot{}
+\fancyfoot[L]{\scriptsize \ttfamily Báo cáo Bài tập lớn môn Công nghệ Phần mềm - Học kỳ I (2026-2027)}
+\fancyfoot[R]{\scriptsize \ttfamily Trang {\thepage}/\pageref{LastPage}}
+\renewcommand{\headrulewidth}{0.3pt}
+\renewcommand{\footrulewidth}{0.3pt}
+
+\setcounter{secnumdepth}{4}
+\setcounter{tocdepth}{3}
+
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{
+	frame=tb,
+	aboveskip=3mm,
+	belowskip=3mm,
+	showstringspaces=false,
+	columns=flexible,
+	basicstyle={\small\ttfamily},
+	numbers=left,
+	numberstyle=\tiny\color{gray},
+	keywordstyle=\color{blue},
+	commentstyle=\color{dkgreen},
+	stringstyle=\color{mauve},
+	breaklines=true,
+	breakatwhitespace=true,
+	tabsize=2
+}
+
+\begin{document}
+
+\begin{titlepage}
+\begin{center}
+\textbf{\Large TRƯỜNG ĐẠI HỌC SÀI GÒN} \\
+\textbf{\Large KHOA CÔNG NGHỆ THÔNG TIN}
+\end{center}
+\vspace{1cm}
+
+\begin{figure}[h!]
+\begin{center}
+\includegraphics[width=3.5cm]{logoITSGU.png}
+\end{center}
+\end{figure}
+
+\vspace{1cm}
+
+\begin{center}
+\begin{tabular}{c}
+	\multicolumn{1}{l}{\textbf{{\Large BÁO CÁO BÀI TẬP LỚN – ASSIGNMENT 1}}}\\
+	\multicolumn{1}{l}{\textbf{{\large MÔN: CÔNG NGHỆ PHẦN MỀM}}}\\
+	~~\\
+	\hline
+	\\
+	\textbf{{\Huge BREWLITE VER 1.0}}\\
+	\\
+	\textbf{{\Large Ứng Dụng Đặt Cà Phê Trực Tuyến}}\\
+	\textbf{{\large Phân tích yêu cầu, Mô hình hóa và Quy trình Agile Scrum}}\\
+	\\
+	\hline
+\end{tabular}
+\end{center}
+
+\vspace{2.5cm}
+
+\begin{table}[h!]
+\begin{center}
+\begin{tabular}{rrl}
+\textbf{Giảng viên hướng dẫn:} & & \textbf{Từ Lãng Phiêu} \\
+\textbf{Sinh viên thực hiện:}   & & Đỗ Duy Anh - 3124411007 \\
+								& & Nguyễn Trần Nhật Duy - 3124411057 \\
+\textbf{Học kỳ / Năm học:}     & & Học kỳ I – Năm học 2026–2027 \\
+\end{tabular}
+\end{center}
+\end{table}
+
+\vfill
+\begin{center}
+{\footnotesize TP. HỒ CHÍ MINH, THÁNG 11/2026}
+\end{center}
+\end{titlepage}
+
+\thispagestyle{empty}
+\newpage
+\tableofcontents
+\newpage
+
+\section{Tóm tắt nội dung dự án}
+Dự án \textbf{BrewLite} là ứng dụng web đặt thức uống trực tiếp theo mô hình thanh toán không dùng tiền mặt, giải quyết tình trạng quá tải tại quầy vào giờ cao điểm. Dự án được triển khai theo quy trình \textbf{Agile Scrum} trọn vẹn gồm 10 Task Product Backlog từ thu thập yêu cầu, thiết kế kiến trúc, phát triển Full-stack monorepo (Next.js 16 + NestJS 10 + PostgreSQL 16) đến kiểm thử tự động và bàn giao.
+
+\section{Tổng quan quy trình Agile Scrum}
+\subsection{Vai trò, Sự kiện và Tạo phẩm}
+Hệ thống áp dụng đầy đủ khung làm việc Agile Scrum:
+\begin{itemize}
+    \item \textbf{Vai trò:} Product Owner (PO), Scrum Master (SM), Development Team.
+    \item \textbf{Sự kiện:} Sprint Planning, Daily Scrum, Sprint Review, Sprint Retrospective.
+    \item \textbf{Tạo phẩm:} Product Backlog, Sprint Backlog, Potentially Shippable Increment.
+\end{itemize}
+
+\subsection{Kế hoạch 3 Sprint đề xuất cho BrewLite}
+\begin{table}[h!]
+\centering
+\begin{tabularx}{\textwidth}{|c|X|l|X|}
+\hline
+\textbf{Sprint} & \textbf{Mục tiêu Sprint} & \textbf{Task} & \textbf{Tạo phẩm chính} \\ \hline
+Sprint 1 & Nền tảng \& hiển thị danh mục menu & Task 1, 2, 3, 4 & Monorepo, DB Docker, API /products, UI Menu \\ \hline
+Sprint 2 & Giỏ hàng, đặt đơn \& đăng nhập JWT & Task 5, 6, 7 & State giỏ hàng, API /orders, Auth Module \\ \hline
+Sprint 3 & Thanh toán, nghiệp vụ nâng cao \& bàn giao & Task 8, 9, 10 & Thanh toán Idempotent, State machine, CI/CD \\ \hline
+\end{tabularx}
+\caption{Kế hoạch phân bổ 3 Sprint của dự án}
+\end{table}
+
+\subsection{Sprint Burndown Chart}
+Burndown Chart theo dõi lượng Story Points còn lại giảm dần theo từng ngày trong Sprint 10 ngày. Khi đường thực tế (Actual) nằm trên đường lý tưởng, nhóm phát hiện sớm nguy cơ chậm tiến độ và tinh chỉnh phạm vi trong phiên Daily Scrum.
+
+\section{Sản phẩm và Người dùng}
+\subsection{Tuyên ngôn tầm nhìn sản phẩm}
+\textit{``Dành cho khách hàng trẻ và nhân viên văn phòng bận rộn; BrewLite là giải pháp web app đặt thức uống trực tiếp tại quầy giúp khách hàng chủ động chọn món, tùy biến và thanh toán an toàn dưới 60 giây, giải quyết triệt để cảnh xếp hàng chen chúc.''}
+
+\subsection{Phân tích Các bên liên quan}
+\begin{itemize}
+    \item \textbf{Khách hàng:} Đặt món nhanh, mượt mà trên di động, không bị trừ tiền kép.
+    \item \textbf{Nhân viên pha chế:} Nhận đơn chính xác định lượng, chuyển trạng thái thuận tiện.
+    \item \textbf{Chủ cửa hàng:} Quản lý doanh thu, chống gian lận giá, dữ liệu kho nhất quán.
+    \item \textbf{Đội ngũ kỹ thuật:} Kiến trúc monorepo module hóa, CI/CD tự động kiểm thử.
+\end{itemize}
+
+\section{Đặc tả yêu cầu phần mềm}
+\subsection{Yêu cầu chức năng (FR)}
+Hệ thống gồm 11 yêu cầu chức năng cốt lõi: \\
+FR-01 (Xem thực đơn \& tồn kho), \\
+FR-02 (Tùy biến size/topping), \\
+FR-03 (Quản lý giỏ hàng), \\
+FR-04 (Đăng nhập/Đăng ký JWT), \\
+FR-05 (Khởi tạo đơn hàng), \\
+FR-06 (Áp dụng mã ưu đãi BREW10), \\ 
+FR-07 (Thanh toán an toàn lũy đẳng), \\
+FR-08 (Tích lũy điểm Loyalty), \\
+FR-09 (Xem lịch sử đơn), \\
+FR-10 (Chuyển trạng thái đơn Barista), \\
+FR-11 (Hủy đơn hoàn kho).
+
+\subsection{Yêu cầu phi chức năng (NFR)}
+\begin{itemize}
+    \item \textbf{NFR-01 (Hiệu năng):} Thời gian phản hồi API trung bình dưới 200ms; FCP của web dưới 1.5s trên 4G.
+    \item \textbf{NFR-02 (Toàn vẹn dữ liệu):} Database Authoritative; giao dịch đảm bảo ACID thông qua Prisma \$transaction.
+    \item \textbf{NFR-03 (Chống trùng lặp):} Bắt buộc Header Idempotency-Key tại POST /payments, không bao giờ trừ tiền hai lần.
+    \item \textbf{NFR-04 (Bảo mật):} Mật khẩu băm một chiều bcrypt; bảo vệ API qua JWT RolesGuard.
+\end{itemize}
+
+\section{Product Backlog: 10 Task theo Scrum}
+Bảng phân rã 10 Task chuẩn (mỗi task 1 điểm, tổng 10 điểm):
+\begin{enumerate}
+    \item \textbf{Task 1 (1đ):} Khởi tạo dự án monorepo (Next.js 16 + NestJS 10), Docker Compose, .env.example, README.
+    \item \textbf{Task 2 (1đ):} API danh sách sản phẩm GET /products kết nối Prisma CSDL PostgreSQL.
+    \item \textbf{Task 3 (1đ):} Trang Menu Frontend gọi API, render lưới sản phẩm responsive.
+    \item \textbf{Task 4 (1đ):} Màn hình chi tiết /product/[id], tùy biến Size (M/L) và Topping, tính giá real-time.
+    \item \textbf{Task 5 (1đ):} Giỏ hàng thêm, sửa, xóa, tự tính tổng tiền, lưu trữ Local Storage.
+    \item \textbf{Task 6 (1đ):} API POST /orders nhận giỏ hàng, validate class-validator, trừ kho nguyên tử, tạo đơn PENDING.
+    \item \textbf{Task 7 (1đ):} Đăng ký, đăng nhập JWT, băm mật khẩu bcrypt, Guard bảo vệ tuyến đường.
+    \item \textbf{Task 8 (1đ):} Thanh toán không tiền mặt Mock payment: Ví/Thẻ, chuyển đơn sang PAID.
+    \item \textbf{Task 9 (1đ):} Màn hình xác nhận đơn, GET /orders/me xem lịch sử, docker-compose chạy Full-stack, README, demo.
+    \item \textbf{Task 10 (1đ):} Nghiệp vụ backend chuyên sâu: State Machine, Idempotent Payment, kiểm soát tồn kho đồng thời và coupon/loyalty.
+\end{enumerate}
+
+\section{Phân tích chuyên sâu Task 10 – Nghiệp vụ Backend}
+\subsection{Order State Machine}
+Vòng đời đơn hàng chuyển đổi nghiêm ngặt:
+$$\text{PENDING} \longrightarrow \text{PAID} \longrightarrow \text{PREPARING} \longrightarrow \text{READY} \longrightarrow \text{COMPLETED}$$
+Nếu đơn hàng đang PAID mà client cố tình gọi nhảy cóc sang COMPLETED, hệ thống chặn bằng lỗi HTTP 409 Conflict.
+
+\subsection{Cơ chế thanh toán lũy đẳng}
+Client gửi kèm Header \texttt{Idempotency-Key}. Server kiểm tra nếu đơn đã thanh toán hoặc key đã được xử lý, server trả về ngay thông tin giao dịch cũ mà không trừ tiền lần hai.
+
+\subsection{Kiểm soát tồn kho nguyên liệu khi đặt đồng thời}
+Áp dụng Database Authoritative. Toàn bộ chuỗi thao tác kiểm tra nguyên liệu theo Recipe, trừ kho và tạo đơn được gói gọn trong Prisma Database Transaction (\texttt{\$transaction}). Khi hủy đơn, hệ thống tự động hoàn trả 100\% nguyên liệu về kho.
+
+\subsection{Kết quả kiểm thử nghiệm thu Task 10}
+Nghiệp vụ Task 10 được chứng minh tính đúng đắn qua 20 Unit Tests Jest (PASS 100\%) và 27 Integration Tests Postman (PASS 100\%).
+
+\section{Definition of Done (DoD) \& Kế hoạch bàn giao}
+Mọi tính năng được xem là hoàn thành khi đạt: Mã nguồn sạch tuân thủ TypeScript; Đạt 100\% Unit test và Postman test; Vượt qua Quality Gate của GitHub Actions CI; Tài liệu API và hướng dẫn vận hành được cập nhật đầy đủ.
+
+\end{document}
