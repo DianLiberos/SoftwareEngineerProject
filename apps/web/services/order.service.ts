@@ -1,12 +1,8 @@
 import { useAuthStore } from "@/store/useAuthStore";
 import { Order, OrderStatus } from "@/types";
 
-const getApiUrl = () => {
-  if (typeof window !== "undefined") {
-    return `http://${window.location.hostname}:3001`;
-  }
-  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-};
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const getApiUrl = () => API_URL;
 
 // Khai báo rõ ràng các Type/Interface
 export interface CreateOrderItemPayload {

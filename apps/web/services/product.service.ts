@@ -1,11 +1,6 @@
 import { Product } from "@/types";
 
-const getApiUrl = () => {
-  if (typeof window !== "undefined") {
-    return `http://${window.location.hostname}:3001`;
-  }
-  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-};
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 const mapProductFromApi = (p: any): Product => {
   const unitPrice = Number(p.basePrice ?? p.price ?? 0);
@@ -48,7 +43,7 @@ const mapProductFromApi = (p: any): Product => {
 
 export const getProducts = async (): Promise<Product[]> => {
   try {
-    const res = await fetch(`${getApiUrl()}/products`, {
+    const res = await fetch(`${API_URL}/products`, {
       cache: "no-store",
     });
     if (!res.ok) throw new Error("Không thể tải danh sách sản phẩm");
@@ -62,7 +57,7 @@ export const getProducts = async (): Promise<Product[]> => {
 
 export const getProductById = async (id: string): Promise<Product | null> => {
   try {
-    const res = await fetch(`${getApiUrl()}/products/${id}`, {
+    const res = await fetch(`${API_URL}/products/${id}`, {
       cache: "no-store",
     });
     if (!res.ok) return null;

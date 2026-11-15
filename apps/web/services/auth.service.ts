@@ -1,13 +1,8 @@
-const getApiUrl = () => {
-  if (typeof window !== "undefined") {
-    return `http://${window.location.hostname}:3001`;
-  }
-  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-};
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 // Hàm đăng nhập nhận email, password
 export const loginApi = async (email: string, password: string) => {
-  const res = await fetch(`${getApiUrl()}/auth/login`, {
+  const res = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -23,7 +18,7 @@ export const loginApi = async (email: string, password: string) => {
 
 // Hàm đăng ký nhận name, email, password
 export const registerApi = async (data: { name: string; email: string; password: string }) => {
-  const res = await fetch(`${getApiUrl()}/auth/register`, {
+  const res = await fetch(`${API_URL}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -41,7 +36,7 @@ export const authApi = {
   login: loginApi,
   register: registerApi,
   async getMe(token: string) {
-    const res = await fetch(`${getApiUrl()}/auth/me`, {
+    const res = await fetch(`${API_URL}/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new Error("Phiên đăng nhập hết hạn");
