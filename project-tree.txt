@@ -1,0 +1,202 @@
+.
+├── amplify.yml
+├── apps
+│   ├── api
+│   │   ├── Dockerfile
+│   │   ├── .dockerignore
+│   │   ├── .env
+│   │   ├── .env.example
+│   │   ├── nest-cli.json
+│   │   ├── package.json
+│   │   ├── package-lock.json
+│   │   ├── postman
+│   │   │   ├── BrewLite API.postman_collection.json
+│   │   │   └── BrewLite Local.postman_environment.json
+│   │   ├── prisma
+│   │   │   ├── migrations
+│   │   │   │   ├── 20261026104427_init
+│   │   │   │   │   └── migration.sql
+│   │   │   │   ├── 20261112083000_ingredient_inventory
+│   │   │   │   │   └── migration.sql
+│   │   │   │   ├── 20261113080500_remove_password_default
+│   │   │   │   │   └── migration.sql
+│   │   │   │   └── migration_lock.toml
+│   │   │   ├── schema.prisma
+│   │   │   └── seed.ts
+│   │   ├── prisma.config.ts
+│   │   ├── README.md
+│   │   ├── src
+│   │   │   ├── app.module.ts
+│   │   │   ├── auth
+│   │   │   │   ├── auth.controller.ts
+│   │   │   │   ├── auth.module.ts
+│   │   │   │   ├── auth.service.ts
+│   │   │   │   ├── decorators
+│   │   │   │   │   └── roles.decorator.ts
+│   │   │   │   ├── dto
+│   │   │   │   │   └── auth.dto.ts
+│   │   │   │   ├── guards
+│   │   │   │   │   ├── jwt-auth.guard.ts
+│   │   │   │   │   └── roles.guard.ts
+│   │   │   │   └── strategies
+│   │   │   │       └── jwt.strategy.ts
+│   │   │   ├── coupons
+│   │   │   │   ├── coupons.controller.ts
+│   │   │   │   ├── coupons.module.ts
+│   │   │   │   ├── coupons.service.ts
+│   │   │   │   └── dto
+│   │   │   │       └── validate-coupon.dto.ts
+│   │   │   ├── generated
+│   │   │   │   └── prisma
+│   │   │   │       ├── browser.ts
+│   │   │   │       ├── client.ts
+│   │   │   │       ├── commonInputTypes.ts
+│   │   │   │       ├── enums.ts
+│   │   │   │       ├── internal
+│   │   │   │       │   ├── class.ts
+│   │   │   │       │   ├── prismaNamespaceBrowser.ts
+│   │   │   │       │   └── prismaNamespace.ts
+│   │   │   │       ├── models
+│   │   │   │       │   ├── CouponRedemption.ts
+│   │   │   │       │   ├── Coupon.ts
+│   │   │   │       │   ├── Ingredient.ts
+│   │   │   │       │   ├── OrderItem.ts
+│   │   │   │       │   ├── Order.ts
+│   │   │   │       │   ├── Payment.ts
+│   │   │   │       │   ├── ProductRecipe.ts
+│   │   │   │       │   ├── ProductSize.ts
+│   │   │   │       │   ├── ProductTopping.ts
+│   │   │   │       │   ├── Product.ts
+│   │   │   │       │   └── User.ts
+│   │   │   │       └── models.ts
+│   │   │   ├── health
+│   │   │   │   └── health.controller.ts
+│   │   │   ├── loyalty
+│   │   │   │   └── loyalty.controller.ts
+│   │   │   ├── main.ts
+│   │   │   ├── orders
+│   │   │   │   ├── order.dto.ts
+│   │   │   │   ├── orders.controller.ts
+│   │   │   │   ├── orders.service.spec.ts
+│   │   │   │   └── orders.service.ts
+│   │   │   ├── payments
+│   │   │   │   ├── payment.dto.ts
+│   │   │   │   ├── payments.controller.ts
+│   │   │   │   ├── payments.service.spec.ts
+│   │   │   │   └── payments.service.ts
+│   │   │   ├── prisma
+│   │   │   │   ├── prisma.module.ts
+│   │   │   │   └── prisma.service.ts
+│   │   │   └── products
+│   │   │       ├── products.controller.ts
+│   │   │       ├── products.module.ts
+│   │   │       ├── products.service.spec.ts
+│   │   │       └── products.service.ts
+│   │   └── tsconfig.json
+│   └── web
+│       ├── AGENTS.md
+│       ├── app
+│       │   ├── barista
+│       │   │   └── page.tsx
+│       │   ├── cart
+│       │   │   └── page.tsx
+│       │   ├── checkout
+│       │   │   └── page.tsx
+│       │   ├── favicon.ico
+│       │   ├── globals.css
+│       │   ├── layout.tsx
+│       │   ├── login
+│       │   │   └── page.tsx
+│       │   ├── page.tsx
+│       │   ├── product
+│       │   │   └── [id]
+│       │   │       └── page.tsx
+│       │   ├── profile
+│       │   │   └── page.tsx
+│       │   └── register
+│       │       └── page.tsx
+│       ├── components
+│       ├── Dockerfile
+│       ├── .dockerignore
+│       ├── .env.example
+│       ├── eslint.config.mjs
+│       ├── next.config.ts
+│       ├── next-env.d.ts
+│       ├── package.json
+│       ├── package-lock.json
+│       ├── postcss.config.mjs
+│       ├── public
+│       │   ├── cafeden.jpeg
+│       │   ├── cafesua.jpeg
+│       │   ├── file.svg
+│       │   ├── globe.svg
+│       │   ├── images
+│       │   │   ├── cafeden.jpeg
+│       │   │   ├── cafesua.jpeg
+│       │   │   ├── tradao.jpeg
+│       │   │   └── trasua.png
+│       │   ├── next.svg
+│       │   ├── tradao.jpeg
+│       │   ├── trasua.png
+│       │   ├── vercel.svg
+│       │   └── window.svg
+│       ├── README.md
+│       ├── services
+│       │   ├── auth.service.ts
+│       │   ├── cafeden.jpeg
+│       │   ├── cafesua.jpeg
+│       │   ├── data.ts
+│       │   ├── order.service.ts
+│       │   ├── product.service.ts
+│       │   ├── tradao.jpeg
+│       │   └── trasua.png
+│       ├── store
+│       │   ├── useAuthStore.ts
+│       │   └── useCartStore.ts
+│       ├── tsconfig.json
+│       ├── tsconfig.tsbuildinfo
+│       └── types
+│           └── index.ts
+├── docker-compose.yml
+├── .dockerignore
+├── docs
+│   ├── architecture
+│   │   ├── adr
+│   │   │   ├── 001_monorepo.md
+│   │   │   └── 002-authoritative-db-and-idempotency.md
+│   │   ├── deployment.puml
+│   │   └── deployment.svg
+│   ├── deployment.md
+│   ├── diagrams
+│   │   ├── activity-order.puml
+│   │   ├── activity-order.svg
+│   │   ├── class-domain.puml
+│   │   ├── class-domain.svg
+│   │   ├── sequence-checkout.puml
+│   │   └── sequence-checkout.svg
+│   ├── reports
+│   │   ├── Assigment_template_SGU
+│   │   │   ├── Assignment_1_SGU.tex
+│   │   │   ├── Assignment_2_SGU.tex
+│   │   │   ├── logoITSGU.png
+│   │   │   └── logoITSGUsmall.png
+│   │   ├── Assignment_1_SGU.pdf
+│   │   └── Assignment_2_SGU.pdf
+│   ├── requirements
+│   │   ├── context_and_scope.md
+│   │   └── srs.md
+│   └── traceability-matrix.md
+├── .env.example
+├── git-commit-history.md
+├── .github
+│   └── workflows
+│       └── ci.yml
+├── .gitignore
+├── project-tree.txt
+├── README.md
+└── tests
+    ├── BrewLite Local.postman_environment.json
+    ├── BrewLite.postman_collection.json
+    └── README.md
+
+53 directories, 147 files

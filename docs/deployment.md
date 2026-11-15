@@ -324,11 +324,11 @@ Dự án đã cấu hình sẵn tệp chuẩn [amplify.yml](../amplify.yml) tạ
 3. **Khai báo Biến Môi Trường (Bắt Buộc):**
    * Trong màn hình cấu hình bản build (Advanced Settings) hoặc mục **App settings > Environment variables**, thêm biến:
      * **Key:** `NEXT_PUBLIC_API_URL`
-     * **Value:** URL công khai của Backend API (Ví dụ: `https://api.yourdomain.com` hoặc `https://<tunnel-id>.trycloudflare.com`).
+     * **Value:** `https://13.214.145.49.nip.io`
      > *Lưu ý quan trọng:* Next.js nhúng giá trị `NEXT_PUBLIC_*` vào bundle client-side trong pha `build`, vì vậy biến môi trường này bắt buộc phải được khai báo trước khi nhấn Deploy.
 4. **Triển khai & Kiểm tra:**
    * Nhấn **Save and Deploy**. Quá trình build và provision mất khoảng 2-3 phút.
-   * Hoàn tất, Amplify sẽ cấp một tên miền HTTPS miễn phí: `https://main.dXXXXXXXXX.amplifyapp.com`.
+   * Hệ thống đã triển khai thành công tại: [https://main.d3240rpj1htg0m.amplifyapp.com/](https://main.d3240rpj1htg0m.amplifyapp.com/) và API Health: [https://13.214.145.49.nip.io/health](https://13.214.145.49.nip.io/health).
 
 ---
 

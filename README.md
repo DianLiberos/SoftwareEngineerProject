@@ -1,8 +1,13 @@
 # BrewLite – Ứng Dụng Đặt Cà Phê Trực Tuyến Không Tiền Mặt
-> **Đồ án môn học:** Công nghệ Phần mềm
+> **Đồ án môn học:** Công nghệ Phần mềm  
 > **Trường Đại học Sài Gòn (SGU) – Khoa Công nghệ Thông tin**  
 > **Học kỳ:** I – Năm học 2026–2027  
 > **Công nghệ cốt lõi:** Next.js 16, NestJS 10, PostgreSQL 16, Prisma ORM, Docker & GitHub Actions  
+> 
+> 🌐 **Hệ Thống Trực Tuyến (Live Production Demo):**
+> - **Frontend Web (AWS Amplify):** [https://main.d3240rpj1htg0m.amplifyapp.com/](https://main.d3240rpj1htg0m.amplifyapp.com/)
+> - **Backend API Health Check (AWS EC2 + HTTPS):** [https://13.214.145.49.nip.io/health](https://13.214.145.49.nip.io/health)
+> - **Backend API Base URL:** `https://13.214.145.49.nip.io`  
 
 ---
 
