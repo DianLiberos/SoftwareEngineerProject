@@ -1,15 +1,67 @@
 services:
-  postgres:
+  db:
     image: postgres:16-alpine
+    container_name: brewlite-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: brewlite
-      POSTGRES_PASSWORD: brewlite
-      POSTGRES_DB: brewlite
+      POSTGRES_USER: ${POSTGRES_USER:-brewlite}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-brewlite}
+      POSTGRES_DB: ${POSTGRES_DB:-brewlite}
     ports:
-      - "5432:5432"
+      - "${DATABASE_PORT:-5432}:5432"
     volumes:
       - brewlite-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-brewlite} -d ${POSTGRES_DB:-brewlite}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - brewlite-network
+
+  api:
+    container_name: brewlite-api
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-brewlite}:${POSTGRES_PASSWORD:-brewlite}@db:5432/${POSTGRES_DB:-brewlite}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-brewlite-production-secure-jwt-secret-key-2026}
+      NODE_ENV: production
+    ports:
+      - "${API_PORT:-3001}:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - brewlite-network
+
+  web:
+    container_name: brewlite-web
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_started
+    networks:
+      - brewlite-network
 
 volumes:
   brewlite-postgres-data:
+
+networks:
+  brewlite-network:
+    driver: bridge

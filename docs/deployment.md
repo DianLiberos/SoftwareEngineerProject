@@ -244,3 +244,166 @@ Sau khi hoàn nguyên, lập tức chạy script kiểm tra nhanh tính khả d�
 1. **Cô lập Cơ sở dữ liệu:** Cổng PostgreSQL (`5432`) chỉ được phép truy cập nội bộ trong Docker Network (`brewlite-network`), không mở cổng công khai ra Internet (`0.0.0.0:5432`).
 2. **Bảo mật Khóa Bí mật:** `JWT_SECRET` trên production phải là chuỗi ngẫu nhiên có độ dài tối thiểu 64 ký tự hex.
 3. **Giám sát Sức khỏe:** Tận dụng endpoint `/health` tích hợp cùng cơ chế Docker Healthcheck hoặc công cụ giám sát uptime để tự động phát hiện và khởi động lại container khi gặp sự cố.
+
+---
+
+## 9. Hướng Dẫn Triển Khai Đóng Gói (Docker Compose & Cloud AWS)
+
+Quy trình triển khai thực tế của BrewLite hỗ trợ 2 kịch bản chính: (1) Chạy trọn gói cục bộ / demo nhanh qua Docker Compose, và (2) Triển khai Cloud phân tán kết hợp AWS Amplify (Frontend) + AWS EC2 (Backend & Database).
+
+```
+ ┌───────────────────────────────────────────────────────────────┐
+ │                      AWS CLOUD ARCHITECTURE                   │
+ │                                                               │
+ │  ┌─────────────────────────┐       HTTPS REST API             │
+ │  │       AWS Amplify       │────────────────────────┐         │
+ │  │   Next.js 16 (apps/web) │                        ▼         │
+ │  │   https://*.amplify.app │               ┌────────────────┐ │
+ │  └─────────────────────────┘               │ Reverse Proxy  │ │
+ │                                            │ (Caddy / Nginx)│ │
+ │  ┌─────────────────────────────────────────┴────────────────┐ │
+ │  │ AWS EC2 (Docker Compose)                │ SSL (HTTPS)    │ │
+ │  │   ┌────────────────────┐                ▼                │ │
+ │  │   │  NestJS (apps/api) │◀─────── localhost:3001          │ │
+ │  │   │  Container: api    │                                 │ │
+ │  │   └─────────┬──────────┘                                 │ │
+ │  │             │ TCP:5432 (Prisma Bridge)                   │ │
+ │  │             ▼                                            │ │
+ │  │   ┌────────────────────┐                                 │ │
+ │  │   │ PostgreSQL 16 DB   │ (Volume: brewlite-postgres-data)│ │
+ │  │   │ Container: db      │                                 │ │
+ │  │   └────────────────────┘                                 │ │
+ │  └──────────────────────────────────────────────────────────┘ │
+ └───────────────────────────────────────────────────────────────┘
+```
+
+### 9.1. Kịch bản 1: Đóng Gói & Chạy Toàn Bộ Bằng Docker Compose (1 Lệnh Duy Nhất)
+
+Toàn bộ 3 thành phần (`db`, `api`, `web`) đã được đóng gói thành container chuẩn hóa thông qua `apps/api/Dockerfile`, `apps/web/Dockerfile` và `docker-compose.yml`:
+
+```bash
+# 1. Clone repository và di chuyển vào thư mục gốc
+git clone https://github.com/DianLiberos/BrewLite.git
+cd BrewLite
+
+# 2. Khởi tạo file biến môi trường từ mẫu
+cp .env.example .env
+
+# 3. Khởi chạy toàn bộ hệ sinh thái dịch vụ (Background Mode)
+docker compose up -d --build
+```
+
+**Cơ chế vận hành tự động bên trong:**
+1. Service `db` (PostgreSQL 16) khởi động và thực hiện kiểm tra `healthcheck` (`pg_isready`).
+2. Service `api` (NestJS) chờ đến khi `db` ở trạng thái `healthy`, sau đó tự động kích hoạt `npx prisma db push --accept-data-loss` để đồng bộ bảng và `npx prisma db seed` để nạp sẵn dữ liệu đồ uống, topping, tài khoản demo (`demo@brewlite.local` / `123456`) trước khi mở cổng `3001`.
+3. Service `web` (Next.js 16) build bundle với `NEXT_PUBLIC_API_URL=http://localhost:3001` và mở cổng `3000`.
+
+**Kiểm tra và truy cập:**
+* **Frontend Web:** `http://localhost:3000`
+* **Backend API & Swagger/Docs:** `http://localhost:3001`
+* **API Health Status:** `curl -s http://localhost:3001/health` ➔ `{"status":"ok","database":"connected"}`
+* **Xem nhật ký container:** `docker compose logs -f api`
+* **Dừng hệ thống:** `docker compose down` (dữ liệu vẫn được bảo toàn trong volume `brewlite-postgres-data`).
+
+---
+
+### 9.2. Kịch bản 2: Triển Khai Frontend Lên AWS Amplify (Monorepo)
+
+Dự án đã cấu hình sẵn tệp chuẩn [amplify.yml](../amplify.yml) tại thư mục gốc nhằm hướng dẫn AWS Amplify nhận diện chính xác cấu trúc Monorepo:
+
+1. **Kết nối Repository:**
+   * Truy cập **AWS Management Console** ➔ Tìm dịch vụ **AWS Amplify Hosting**.
+   * Nhấn **Deploy an app** ➔ Chọn nguồn **GitHub** và ủy quyền truy cập repo `BrewLite`.
+   * Chọn nhánh triển khai: `main`.
+2. **Nhận diện Cấu hình Monorepo:**
+   * AWS Amplify sẽ tự động đọc tệp `amplify.yml`:
+     * `appRoot: apps/web`
+     * `preBuild: npm ci`
+     * `build: npm run build`
+     * `baseDirectory: .next`
+3. **Khai báo Biến Môi Trường (Bắt Buộc):**
+   * Trong màn hình cấu hình bản build (Advanced Settings) hoặc mục **App settings > Environment variables**, thêm biến:
+     * **Key:** `NEXT_PUBLIC_API_URL`
+     * **Value:** URL công khai của Backend API (Ví dụ: `https://api.yourdomain.com` hoặc `https://<tunnel-id>.trycloudflare.com`).
+     > *Lưu ý quan trọng:* Next.js nhúng giá trị `NEXT_PUBLIC_*` vào bundle client-side trong pha `build`, vì vậy biến môi trường này bắt buộc phải được khai báo trước khi nhấn Deploy.
+4. **Triển khai & Kiểm tra:**
+   * Nhấn **Save and Deploy**. Quá trình build và provision mất khoảng 2-3 phút.
+   * Hoàn tất, Amplify sẽ cấp một tên miền HTTPS miễn phí: `https://main.dXXXXXXXXX.amplifyapp.com`.
+
+---
+
+### 9.3. Kịch bản 3: Triển Khai Backend & Database Lên AWS EC2 Bằng Docker Compose
+
+Chiến lược tiết kiệm chi phí: Chỉ cần tạo máy ảo EC2 trước ngày báo cáo 1 ngày (chạy trong khung Free Tier), sau khi báo cáo xong có thể Terminate instance.
+
+#### Bước 1: Khởi tạo Máy Ảo EC2
+* **AMI:** Ubuntu Server 24.04 LTS (64-bit x86).
+* **Instance Type:** `t3.small` (hoặc `t2.micro` Free Tier).
+* **Security Group Inbound Rules:**
+  * Port `22` (SSH): `0.0.0.0/0` (hoặc My IP).
+  * Port `80` (HTTP): `0.0.0.0/0`.
+  * Port `443` (HTTPS): `0.0.0.0/0`.
+  * Port `3001` (Custom TCP - API): `0.0.0.0/0`.
+
+#### Bước 2: Cài đặt Môi Trường Docker trên EC2
+SSH vào máy chủ EC2:
+```bash
+ssh -i "your-key.pem" ubuntu@<EC2-PUBLIC-IP>
+
+# Cập nhật và cài đặt Docker + Docker Compose plugin
+sudo apt update && sudo apt install -y docker.io docker-compose-v2 git
+sudo usermod -aG docker ubuntu
+newgrp docker
+```
+
+#### Bước 3: Tải Mã Nguồn và Khởi Chạy Dịch Vụ
+```bash
+# Clone repository
+git clone https://github.com/DianLiberos/BrewLite.git
+cd BrewLite
+
+# Tạo file môi trường production
+cp .env.example .env
+nano .env # Cập nhật JWT_SECRET mạnh cho môi trường thực tế
+
+# Khởi chạy riêng Backend và Database trên EC2 (Frontend chạy trên Amplify)
+docker compose up -d --build db api
+
+# Kiểm tra container đã UP
+docker compose ps
+curl http://localhost:3001/health
+```
+
+#### Bước 4: Khắc Phục Lỗi Mixed Content Khi Kết Nối Với Amplify (BẮT BUỘC)
+
+> [!WARNING] CẢNH BÁO LỖI BẢO MẬT MIXED CONTENT
+> AWS Amplify mặc định bắt buộc sử dụng giao thức **HTTPS** (`https://*.amplifyapp.com`). Nếu trình duyệt trên Amplify gửi request API tới Backend EC2 qua giao thức HTTP thường (`http://<EC2-IP>:3001`), trình duyệt (Chrome, Safari, Firefox) sẽ **chặn toàn bộ cuộc gọi API** với lỗi:
+> `Mixed Content: The page at 'https://...' was loaded over HTTPS, but requested an insecure XMLHttpRequest endpoint 'http://...'. This request has been blocked; the content must be served over HTTPS.`
+
+**Cách xử lý nhanh nhất cho buổi demo (chọn 1 trong 2 cách):**
+
+* **Cách 1: Sử dụng Cloudflare Tunnel (Miễn phí, có HTTPS ngay trong 1 phút, không cần mua domain)**
+  ```bash
+  # Cài đặt cloudflared trên EC2
+  curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+  sudo dpkg -i cloudflared.deb
+
+  # Mở tunnel công khai có HTTPS tự động trỏ vào port 3001
+  cloudflared tunnel --url http://localhost:3001
+  ```
+  Terminal sẽ trả về một đường dẫn HTTPS dạng: `https://xyz-random-name.trycloudflare.com`.  
+  👉 Copy đường dẫn này dán vào biến `NEXT_PUBLIC_API_URL` trên AWS Amplify và Re-deploy Frontend!
+
+* **Cách 2: Sử dụng Caddy Web Server (Tự cấp phát chứng chỉ SSL Let's Encrypt)**
+  Nếu bạn có gắn domain (hoặc DuckDNS miễn phí `brewlite.duckdns.org` trỏ về IP EC2):
+  ```bash
+  sudo apt install -y caddy
+  sudo nano /etc/caddy/Caddyfile
+  ```
+  Nội dung `/etc/caddy/Caddyfile`:
+  ```caddy
+  brewlite.duckdns.org {
+      reverse_proxy localhost:3001
+  }
+  ```
+  Khởi động lại: `sudo systemctl restart caddy`. Caddy sẽ tự động lấy chứng chỉ SSL HTTPS hợp lệ. Lúc này URL API là `https://brewlite.duckdns.org`.
