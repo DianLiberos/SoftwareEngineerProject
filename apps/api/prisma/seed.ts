@@ -197,6 +197,8 @@ async function main() {
     });
   }
 
+  await prisma.couponRedemption.deleteMany({});
+
   await prisma.coupon.upsert({
     where: { code: "BREW10" },
     update: {},
